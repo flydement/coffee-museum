@@ -1,0 +1,33 @@
+{
+  "name": "coffee-museum",
+  "private": true,
+  "version": "1.0.0",
+  "description": "拾光咖啡博物馆 — 跨端精品咖啡风味策展与实时分步冲煮工坊（Web / PC / Mobile）",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "desktop:start": "npm run build && electron .",
+    "desktop:dev": "ELECTRON_DEV_URL=http://localhost:5173 electron .",
+    "desktop:build": "npm run build && electron-builder --config electron-builder.json",
+    "mobile:sync": "npm run build && npx cap sync",
+    "mobile:ios": "npm run build && npx cap sync ios && npx cap open ios",
+    "mobile:android": "npm run build && npx cap sync android && npx cap open android"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "oxlint": "^1.90.0",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6"
+  }
+}

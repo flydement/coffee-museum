@@ -1,0 +1,18 @@
+{
+  "name": "拾光咖啡博物馆 · Atelier Café Museum",
+  "short_name": "咖啡博物馆",
+  "description": "按风味策展探索世界咖啡馆藏，实时分步引导制作属于你的精品咖啡。",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#F6F1E7",
+  "theme_color": "#F6F1E7",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
