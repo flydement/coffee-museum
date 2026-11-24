@@ -14,9 +14,21 @@ if (
   window.location.protocol.startsWith('http') &&
   !window.coffeeMuseumDesktop?.isDesktop
 ) {
+  let refreshing = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return
+    refreshing = true
+    window.location.reload()
+  })
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {
-      // Service worker registration is optional in non-HTTPS local preview
-    })
+    navigator.serviceWorker
+      .register('./sw.js', { updateViaCache: 'none' })
+      .then((reg) => {
+        void reg.update()
+      })
+      .catch(() => {
+        // Service worker registration is optional in local preview
+      })
   })
 }

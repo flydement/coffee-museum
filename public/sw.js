@@ -1,20 +1,30 @@
-const CACHE_NAME = 'coffee-museum-v2'
-const PRECACHE_ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg']
+const CACHE_NAME = 'coffee-museum-v3'
+const PRECACHE_ASSETS = ['./manifest.webmanifest', './icon.svg']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        PRECACHE_ASSETS.map((url) =>
+          fetch(url, { cache: 'reload' }).then((res) => {
+            if (res.ok) return cache.put(url, res)
+          })
+        )
+      )
+    )
   )
   self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      )
+      .then(() => self.clients.claim())
   )
-  self.clients.claim()
 })
 
 self.addEventListener('fetch', (event) => {
@@ -22,14 +32,19 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
   if (url.origin !== self.location.origin) return
 
-  // Network-first for HTML navigation so GitHub Pages / PWA always gets latest release
-  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+  // Always bypass browser HTTP disk cache for HTML navigation so new GitHub Pages deploys appear immediately
+  if (
+    event.request.mode === 'navigate' ||
+    event.request.destination === 'document' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('.html')
+  ) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'no-cache' })
         .then((response) => {
           if (response && response.status === 200) {
             const copy = response.clone()
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy))
+            caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy))
           }
           return response
         })
@@ -38,20 +53,33 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Stale-while-revalidate for static assets
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const copy = response.clone()
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy))
-          }
-          return response
-        })
-        .catch(() => cached)
+  // Hashed Vite assets (/assets/*) are immutable; other static files use network-first fallback
+  if (url.pathname.includes('/assets/')) {
+    event.respondWith(
+      caches.match(event.request).then(
+        (cached) =>
+          cached ||
+          fetch(event.request).then((response) => {
+            if (response && response.status === 200) {
+              const copy = response.clone()
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy))
+            }
+            return response
+          })
+      )
+    )
+    return
+  }
 
-      return cached || fetchPromise
-    })
+  event.respondWith(
+    fetch(event.request, { cache: 'no-cache' })
+      .then((response) => {
+        if (response && response.status === 200) {
+          const copy = response.clone()
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy))
+        }
+        return response
+      })
+      .catch(() => caches.match(event.request))
   )
 })
