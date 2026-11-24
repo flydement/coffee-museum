@@ -2,6 +2,7 @@ import type { FlavorProfile } from '../types/coffee'
 
 interface FlavorRadarProps {
   profile: FlavorProfile
+  compareProfile?: FlavorProfile
   size?: number
 }
 
@@ -13,7 +14,11 @@ const AXES: { key: keyof FlavorProfile; label: string }[] = [
   { key: 'bitterness', label: '苦韵' },
 ]
 
-export function FlavorRadar({ profile, size = 236 }: FlavorRadarProps) {
+export function FlavorRadar({
+  profile,
+  compareProfile,
+  size = 236,
+}: FlavorRadarProps) {
   const cx = size / 2
   const cy = size / 2
   const radius = size * 0.34
@@ -33,6 +38,13 @@ export function FlavorRadar({ profile, size = 236 }: FlavorRadarProps) {
     return `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`
   }).join(' ')
 
+  const comparePoints = compareProfile
+    ? AXES.map((axis, i) => {
+        const pt = pointAt(i, Math.max(0.12, compareProfile[axis.key] / 100))
+        return `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`
+      }).join(' ')
+    : ''
+
   return (
     <svg
       width={size}
@@ -40,7 +52,7 @@ export function FlavorRadar({ profile, size = 236 }: FlavorRadarProps) {
       viewBox={`0 0 ${size} ${size}`}
       role="img"
       aria-label="五维风味雷达图"
-      style={{ display: 'block', margin: '0 auto' }}
+      style={{ display: 'block', margin: '0 auto', color: 'var(--espresso-800)' }}
     >
       {rings.map((ring) => {
         const pts = AXES.map((_, i) => {
@@ -51,8 +63,9 @@ export function FlavorRadar({ profile, size = 236 }: FlavorRadarProps) {
           <polygon
             key={ring}
             points={pts}
-            fill={ring === 1 ? 'rgba(239, 231, 216, 0.55)' : 'none'}
-            stroke="rgba(74, 52, 40, 0.16)"
+            fill={ring === 1 ? 'var(--paper-inset)' : 'none'}
+            fillOpacity={ring === 1 ? 0.5 : 0}
+            stroke="var(--border-strong)"
             strokeWidth="1"
           />
         )
@@ -68,7 +81,7 @@ export function FlavorRadar({ profile, size = 236 }: FlavorRadarProps) {
               y1={cy}
               x2={end.x}
               y2={end.y}
-              stroke="rgba(74, 52, 40, 0.16)"
+              stroke="var(--border-strong)"
               strokeWidth="1"
             />
             <text
@@ -76,7 +89,7 @@ export function FlavorRadar({ profile, size = 236 }: FlavorRadarProps) {
               y={labelPt.y}
               textAnchor="middle"
               dominantBaseline="middle"
-              fill="#463125"
+              fill="currentColor"
               fontSize="11.5"
               fontWeight="600"
             >
@@ -86,10 +99,21 @@ export function FlavorRadar({ profile, size = 236 }: FlavorRadarProps) {
         )
       })}
 
+      {compareProfile && (
+        <polygon
+          points={comparePoints}
+          fill="rgba(79, 103, 83, 0.24)"
+          stroke="#5A7A60"
+          strokeWidth="2"
+          strokeDasharray="4 2"
+          strokeLinejoin="round"
+        />
+      )}
+
       <polygon
         points={polygonPoints}
         fill="rgba(174, 118, 58, 0.28)"
-        stroke="#A97236"
+        stroke="#C28643"
         strokeWidth="2.2"
         strokeLinejoin="round"
       />
@@ -102,8 +126,8 @@ export function FlavorRadar({ profile, size = 236 }: FlavorRadarProps) {
             cx={pt.x}
             cy={pt.y}
             r="3.8"
-            fill="#2A1D16"
-            stroke="#FCF9F3"
+            fill="#C28643"
+            stroke="var(--paper-surface)"
             strokeWidth="1.5"
           />
         )

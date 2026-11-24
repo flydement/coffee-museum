@@ -1,11 +1,13 @@
-import type { AppView } from '../types/coffee'
+import type { AppView, MuseumTheme } from '../types/coffee'
 import { detectRuntimePlatform } from '../utils/platform'
 import {
+  AmbienceIcon,
   ArchiveIcon,
   CompassIcon,
   GalleryIcon,
   KettleIcon,
   MuseumLogoIcon,
+  ThemeLampIcon,
 } from './Icons'
 
 interface HeaderProps {
@@ -13,6 +15,10 @@ interface HeaderProps {
   onNavigate: (view: AppView) => void
   archiveCount: number
   hasActiveBrew: boolean
+  theme: MuseumTheme
+  onToggleTheme: () => void
+  ambienceOn: boolean
+  onToggleAmbience: () => void
 }
 
 const NAV_ITEMS: { id: AppView; label: string; shortLabel: string }[] = [
@@ -27,6 +33,10 @@ export function Header({
   onNavigate,
   archiveCount,
   hasActiveBrew,
+  theme,
+  onToggleTheme,
+  ambienceOn,
+  onToggleAmbience,
 }: HeaderProps) {
   const platform = detectRuntimePlatform()
 
@@ -83,9 +93,37 @@ export function Header({
             ))}
           </nav>
 
-          <div className="platform-chip" title={platform.hint}>
-            <span className="platform-dot" />
-            <span>{platform.label}</span>
+          <div className="header-right-actions">
+            <button
+              id="header-ambience-btn"
+              type="button"
+              className={`icon-pill-btn ${ambienceOn ? 'active' : ''}`}
+              onClick={onToggleAmbience}
+              title="开启/关闭雨夜吃茶馆环境白噪音"
+            >
+              <AmbienceIcon active={ambienceOn} size={16} />
+              <span className="hide-mobile-label">
+                {ambienceOn ? '雨夜声景中' : '馆内声景'}
+              </span>
+            </button>
+
+            <button
+              id="header-theme-btn"
+              type="button"
+              className={`icon-pill-btn ${theme === 'kissaten' ? 'active' : ''}`}
+              onClick={onToggleTheme}
+              title={theme === 'kissaten' ? '切换至日间暖白展厅' : '切换至深夜吃茶馆暖暗模式'}
+            >
+              <ThemeLampIcon dark={theme === 'kissaten'} size={16} />
+              <span className="hide-mobile-label">
+                {theme === 'kissaten' ? '日间展馆' : '深夜吃茶'}
+              </span>
+            </button>
+
+            <div className="platform-chip" title={platform.hint}>
+              <span className="platform-dot" />
+              <span>{platform.label}</span>
+            </div>
           </div>
         </div>
       </header>

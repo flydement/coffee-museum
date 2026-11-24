@@ -6,6 +6,8 @@ export type BrewMethod =
   | 'coldbrew'
   | 'moka'
   | 'iced'
+  | 'frenchpress'
+  | 'aeropress'
 
 export type DrinkCategory = '手冲黑咖' | '意式奶咖' | '冰爽特调' | '复古器具'
 
@@ -21,6 +23,12 @@ export type StepPhase =
   | 'milk'
   | 'assemble'
   | 'finish'
+
+export type TasteCustomizePreset = 'standard' | 'sweet' | 'bright' | 'bold'
+
+export type PostcardTheme = 'parchment' | 'espresso' | 'botanical'
+
+export type MuseumTheme = 'daylight' | 'kissaten'
 
 export interface FlavorProfile {
   acidity: number // 0-100 酸度
@@ -107,6 +115,7 @@ export interface SavedBrewRecord {
   exhibitNo: string
   methodLabel: string
   servings: number
+  tastePreset?: TasteCustomizePreset
   doseGrams: number
   waterMl: number
   milkMl?: number

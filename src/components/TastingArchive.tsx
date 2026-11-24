@@ -1,21 +1,42 @@
+import { useMemo, useRef, useState } from 'react'
 import { COFFEE_EXHIBITS } from '../data/coffees'
-import type { CoffeeExhibit, SavedBrewRecord } from '../types/coffee'
-import { downloadTastingPostcard } from '../utils/exportCard'
+import type {
+  CoffeeExhibit,
+  PostcardTheme,
+  SavedBrewRecord,
+  TasteCustomizePreset,
+} from '../types/coffee'
+import {
+  downloadTastingPostcard,
+  POSTCARD_THEME_OPTIONS,
+  renderPostcardDataUrl,
+} from '../utils/exportCard'
 import { computeCuratorBadges } from '../utils/platform'
 
 interface TastingArchiveProps {
   records: SavedBrewRecord[]
   onDeleteRecord: (recordId: string) => void
-  onRebrew: (coffee: CoffeeExhibit, servings: number) => void
+  onImportRecords: (records: SavedBrewRecord[]) => void
+  onRebrew: (
+    coffee: CoffeeExhibit,
+    servings: number,
+    tastePreset?: TasteCustomizePreset
+  ) => void
   onGoCurator: () => void
 }
 
 export function TastingArchive({
   records,
   onDeleteRecord,
+  onImportRecords,
   onRebrew,
   onGoCurator,
 }: TastingArchiveProps) {
+  const [previewRec, setPreviewRec] = useState<SavedBrewRecord | null>(null)
+  const [postcardTheme, setPostcardTheme] = useState<PostcardTheme>('parchment')
+  const [backupNotice, setBackupNotice] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
   const badges = computeCuratorBadges(records, COFFEE_EXHIBITS)
   const uniqueCount = new Set(records.map((r) => r.coffeeId)).size
   const avgRating =
@@ -24,6 +45,49 @@ export function TastingArchive({
       : '—'
   const unlockedBadges = badges.filter((b) => b.unlocked).length
 
+  const previewDataUrl = useMemo(() => {
+    if (!previewRec) return ''
+    return renderPostcardDataUrl(previewRec, postcardTheme)
+  }, [postcardTheme, previewRec])
+
+  const handleExportJson = () => {
+    const blob = new Blob([JSON.stringify(records, null, 2)], {
+      type: 'application/json',
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `拾光咖啡博物馆-馆藏备份-${new Date().toISOString().slice(0, 10)}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    setBackupNotice('已导出馆藏备份 JSON 文件')
+  }
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result))
+        if (Array.isArray(parsed)) {
+          const valid = parsed.filter(
+            (item): item is SavedBrewRecord =>
+              Boolean(item && typeof item.recordId === 'string' && typeof item.coffeeId === 'string')
+          )
+          onImportRecords(valid)
+          setBackupNotice(`成功导入并合并 ${valid.length} 条馆藏记录`)
+        } else {
+          setBackupNotice('备份文件格式不正确')
+        }
+      } catch {
+        setBackupNotice('无法解析该 JSON 备份文件')
+      }
+      e.target.value = ''
+    }
+    reader.readAsText(file)
+  }
+
   return (
     <div>
       <div className="results-header" style={{ marginBottom: 24 }}>
@@ -31,10 +95,61 @@ export function TastingArchive({
           <p className="eyebrow">PERSONAL TASTING ARCHIVE · 个人馆藏陈列室</p>
           <h1 className="section-heading">我亲手冲煮的咖啡馆藏</h1>
           <p className="section-lead">
-            每一次完成的冲煮都会被编入专属馆藏编号，随时导出复古明信片或一键复刻当时的粉水参数。
+            每一次完成的冲煮都会被编入专属馆藏编号，支持切换三种复古纸张导出明信片，或跨端备份迁移你的品鉴记录。
           </p>
         </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {records.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={handleExportJson}
+            >
+              导出备份 JSON
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            导入馆藏备份
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: 'none' }}
+            onChange={handleImportFile}
+          />
+        </div>
       </div>
+
+      {backupNotice && (
+        <div
+          style={{
+            marginBottom: 18,
+            padding: '10px 16px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--sage-100)',
+            color: 'var(--sage-600)',
+            fontSize: '0.84rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>✓ {backupNotice}</span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setBackupNotice(null)}
+          >
+            关闭
+          </button>
+        </div>
+      )}
 
       {/* Summary Plaques */}
       <div className="archive-stats-row">
@@ -151,15 +266,17 @@ export function TastingArchive({
                   <button
                     type="button"
                     className="btn btn-brass btn-sm"
-                    onClick={() => downloadTastingPostcard(rec)}
+                    onClick={() => setPreviewRec(rec)}
                   >
-                    导出明信片
+                    纪念明信片
                   </button>
                   {matchedCoffee && (
                     <button
                       type="button"
                       className="btn btn-outline btn-sm"
-                      onClick={() => onRebrew(matchedCoffee, rec.servings)}
+                      onClick={() =>
+                        onRebrew(matchedCoffee, rec.servings, rec.tastePreset)
+                      }
                     >
                       复刻再冲
                     </button>
@@ -176,6 +293,71 @@ export function TastingArchive({
               </article>
             )
           })}
+        </div>
+      )}
+
+      {/* Postcard Theme Preview Modal */}
+      {previewRec && (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="纪念明信片预览与导出"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPreviewRec(null)
+          }}
+        >
+          <div className="specimen-modal" style={{ maxWidth: 520, textAlign: 'center' }}>
+            <button
+              type="button"
+              className="modal-close"
+              aria-label="关闭预览"
+              onClick={() => setPreviewRec(null)}
+            >
+              ×
+            </button>
+            <p className="eyebrow">{previewRec.catalogNumber} · 馆藏纪念明信片</p>
+            <h3 className="section-heading" style={{ fontSize: '1.35rem', marginBottom: 14 }}>
+              {previewRec.coffeeName}
+            </h3>
+
+            {previewDataUrl && (
+              <div className="postcard-preview-frame" style={{ maxWidth: 310 }}>
+                <img src={previewDataUrl} alt="馆藏明信片高清预览" />
+              </div>
+            )}
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: 8,
+                flexWrap: 'wrap',
+                margin: '16px 0',
+              }}
+            >
+              {POSTCARD_THEME_OPTIONS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`theme-swatch-btn ${postcardTheme === t.id ? 'active' : ''}`}
+                  onClick={() => setPostcardTheme(t.id)}
+                >
+                  <span className="swatch-dot" style={{ background: t.swatch }} />
+                  <span>{t.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-primary btn-lg"
+              style={{ width: '100%' }}
+              onClick={() => downloadTastingPostcard(previewRec, postcardTheme)}
+            >
+              下载高清 PNG 明信片
+            </button>
+          </div>
         </div>
       )}
     </div>

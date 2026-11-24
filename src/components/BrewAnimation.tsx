@@ -3,6 +3,7 @@ import type { BrewStep, CoffeeExhibit } from '../types/coffee'
 interface BrewAnimationProps {
   coffee: CoffeeExhibit
   step: BrewStep
+  prevVisualLevel?: number
   isRunning: boolean
   stepProgress: number // 0..1 within current step
 }
@@ -10,7 +11,7 @@ interface BrewAnimationProps {
 function SteamCurls({ show, y = 62 }: { show?: boolean; y?: number }) {
   if (!show) return null
   return (
-    <g opacity="0.7">
+    <g opacity="0.72">
       <path
         className="svg-steam"
         d={`M136 ${y} C132 ${y - 16}, 144 ${y - 24}, 139 ${y - 38}`}
@@ -42,11 +43,17 @@ function SteamCurls({ show, y = 62 }: { show?: boolean; y?: number }) {
 export function BrewAnimation({
   coffee,
   step,
+  prevVisualLevel,
   isRunning,
   stepProgress,
 }: BrewAnimationProps) {
   const activePour = Boolean(step.isPouring && (isRunning || stepProgress > 0))
-  const fillPercent = Math.min(98, Math.max(6, step.visualLevel))
+  const startFill = typeof prevVisualLevel === 'number' ? prevVisualLevel : step.visualLevel
+  const interpolated =
+    step.durationSec > 0
+      ? startFill + (step.visualLevel - startFill) * stepProgress
+      : step.visualLevel
+  const fillPercent = Math.min(98, Math.max(6, interpolated))
   const { liquid, crema, accent } = coffee.palette
 
   // 1. V60 Pour-over glass server + dripper + gooseneck spout
@@ -62,10 +69,8 @@ export function BrewAnimation({
           </clipPath>
         </defs>
 
-        {/* Wooden coaster */}
         <rect x="78" y="242" width="164" height="12" rx="6" fill="#C9A87D" stroke="#6E4E34" strokeWidth="1.5" />
 
-        {/* Gooseneck kettle spout on top right */}
         <g transform={activePour ? 'translate(-6, 4) rotate(-6 240 50)' : 'translate(0, 0)'} style={{ transition: 'transform 0.5s ease' }}>
           <path
             d="M276 58 C242 58, 224 34, 198 44 C184 49, 174 60, 166 64"
@@ -84,7 +89,6 @@ export function BrewAnimation({
           <ellipse cx="282" cy="64" rx="20" ry="26" fill="#B56E3B" stroke="#5A341C" strokeWidth="2" />
         </g>
 
-        {/* Animated pouring water stream */}
         {activePour && (
           <path
             className="svg-pour-stream"
@@ -96,7 +100,6 @@ export function BrewAnimation({
           />
         )}
 
-        {/* Glass Server */}
         <path
           d="M114 156 H206 L222 224 C224 233 216 240 206 240 H114 C104 240 96 233 98 224 Z"
           fill="rgba(255,255,255,0.68)"
@@ -111,7 +114,6 @@ export function BrewAnimation({
           fill="none"
         />
 
-        {/* Rising amber coffee inside server */}
         <g clipPath="url(#v60-server-clip)">
           <rect
             x="92"
@@ -119,7 +121,7 @@ export function BrewAnimation({
             width="136"
             height={serverLiquidHeight + 12}
             fill={liquid}
-            style={{ transition: 'y 0.6s ease, height 0.6s ease' }}
+            style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
           />
           <ellipse
             cx="160"
@@ -128,24 +130,18 @@ export function BrewAnimation({
             ry="6"
             fill={crema}
             opacity="0.75"
-            style={{ transition: 'cy 0.6s ease' }}
+            style={{ transition: 'cy 0.4s linear' }}
           />
         </g>
 
-        {/* Dripping coffee drop */}
         {(activePour || step.phase === 'bloom' || step.phase === 'finish') && (
           <circle className="svg-drip" cx="160" cy="156" r="3.6" fill={liquid} />
         )}
 
-        {/* Brass dripper collar */}
         <rect x="116" y="148" width="88" height="8" rx="4" fill="#C28C4D" stroke="#463125" strokeWidth="1.6" />
-
-        {/* V60 Glass Cone & Filter Paper */}
         <polygon points="104,88 216,88 175,148 145,148" fill="#F8EFE0" stroke="#463125" strokeWidth="2.2" />
-        {/* Coffee bed inside dripper */}
         <polygon points="122,115 198,115 174,147 146,147" fill="#5A331E" />
 
-        {/* Bloom CO2 bubbles */}
         {step.isBlooming && (
           <g>
             <circle className="svg-bloom-bubble" cx="148" cy="113" r="6" fill={crema} />
@@ -159,7 +155,227 @@ export function BrewAnimation({
     )
   }
 
-  // 2. Espresso machine grouphead & golden crema demitasse
+  // 2. French Press (glass beaker + stainless frame + pressing mesh plunger)
+  if (coffee.method === 'frenchpress') {
+    const liquidH = Math.round((fillPercent / 100) * 116)
+    const liquidY = 232 - liquidH
+    const isPlunging = step.phase === 'extract' || step.phase === 'finish'
+    const plungerY = isPlunging ? 116 + Math.round(stepProgress * 56) : 108
+
+    return (
+      <svg viewBox="0 0 320 270" width="100%" style={{ maxWidth: 340 }} aria-label="法压壶全浸泡动态演示">
+        <defs>
+          <clipPath id="fp-beaker-clip">
+            <rect x="112" y="96" width="96" height="138" rx="8" />
+          </clipPath>
+        </defs>
+
+        <rect x="86" y="240" width="148" height="10" rx="5" fill="#C9A87D" stroke="#6E4E34" strokeWidth="1.5" />
+
+        {activePour && step.phase === 'pour' && (
+          <line
+            className="svg-pour-stream"
+            x1="160"
+            y1="30"
+            x2="160"
+            y2={Math.max(106, liquidY)}
+            stroke="#D6E6EE"
+            strokeWidth="6"
+            strokeLinecap="round"
+          />
+        )}
+
+        {/* Glass Beaker */}
+        <rect
+          x="112"
+          y="96"
+          width="96"
+          height="138"
+          rx="8"
+          fill="rgba(255,255,255,0.68)"
+          stroke="#3E2A20"
+          strokeWidth="2.4"
+        />
+
+        {/* Handle */}
+        <path
+          d="M208 114 H228 C236 114 242 120 242 128 V196 C242 204 236 210 228 210 H208"
+          stroke="#2E1F17"
+          strokeWidth="6.5"
+          strokeLinecap="round"
+          fill="none"
+        />
+
+        {/* Liquid & immersed grounds */}
+        <g clipPath="url(#fp-beaker-clip)">
+          <rect
+            x="108"
+            y={liquidY}
+            width="104"
+            height={liquidH + 10}
+            fill={liquid}
+            style={{ transition: 'y 0.45s linear, height 0.45s linear' }}
+          />
+          {fillPercent > 30 && (
+            <rect
+              x="108"
+              y={liquidY}
+              width="104"
+              height="12"
+              fill={crema}
+              opacity={step.phase === 'extract' ? 0.35 : 0.8}
+              style={{ transition: 'y 0.45s linear, opacity 0.4s ease' }}
+            />
+          )}
+          {/* Settled coffee grounds at bottom */}
+          <rect x="110" y="216" width="100" height="20" fill="#3B1E10" opacity="0.85" />
+        </g>
+
+        {/* Stainless base & band */}
+        <rect x="108" y="224" width="104" height="14" rx="4" fill="#C8BEB0" stroke="#3E2A20" strokeWidth="1.8" />
+        <rect x="108" y="132" width="104" height="7" fill="#C8BEB0" stroke="#3E2A20" strokeWidth="1.5" />
+
+        {/* Lid & Animated Plunger */}
+        {step.phase !== 'pour' && (
+          <g>
+            <path d="M106 96 Q160 84 214 96 Z" fill="#D5CCC0" stroke="#3E2A20" strokeWidth="2.2" />
+            <line
+              x1="160"
+              y1={plungerY - 58}
+              x2="160"
+              y2={plungerY}
+              stroke="#5A4A3F"
+              strokeWidth="3.2"
+              style={{ transition: 'all 0.35s linear' }}
+            />
+            <circle
+              cx="160"
+              cy={plungerY - 62}
+              r="7.5"
+              fill="#B88446"
+              stroke="#3E2A20"
+              strokeWidth="1.8"
+              style={{ transition: 'cy 0.35s linear' }}
+            />
+            {/* Stainless mesh filter plate */}
+            <rect
+              x="115"
+              y={plungerY}
+              width="90"
+              height="6"
+              rx="3"
+              fill="#B88446"
+              stroke="#3E2A20"
+              strokeWidth="1.5"
+              style={{ transition: 'y 0.35s linear' }}
+            />
+          </g>
+        )}
+
+        <SteamCurls show={step.hasSteam} y={76} />
+      </svg>
+    )
+  }
+
+  // 3. AeroPress Flash Brew over Ice Server
+  if (coffee.method === 'aeropress') {
+    const serverH = step.phase === 'extract' ? Math.round(18 + stepProgress * 56) : step.phase === 'finish' ? 74 : 18
+    const serverY = 238 - serverH
+    const plungerOffset = step.phase === 'extract' ? Math.round(stepProgress * 36) : 0
+
+    return (
+      <svg viewBox="0 0 320 270" width="100%" style={{ maxWidth: 340 }} aria-label="爱乐压气压急冷动态演示">
+        <defs>
+          <clipPath id="ap-server-clip">
+            <path d="M112 162 H208 L220 228 C221 235 215 240 206 240 H114 C105 240 99 235 100 228 Z" />
+          </clipPath>
+        </defs>
+
+        <rect x="82" y="242" width="156" height="10" rx="5" fill="#C9A87D" stroke="#6E4E34" strokeWidth="1.5" />
+
+        {/* Lower Ice Carafe */}
+        <path
+          d="M112 162 H208 L220 228 C221 235 215 240 206 240 H114 C105 240 99 235 100 228 Z"
+          fill="rgba(255,255,255,0.66)"
+          stroke="#3E2A20"
+          strokeWidth="2.4"
+        />
+        <path
+          d="M210 176 H226 C234 176 240 183 240 192 V208 C240 216 234 222 225 222 H217"
+          stroke="#463125"
+          strokeWidth="5.5"
+          strokeLinecap="round"
+          fill="none"
+        />
+
+        <g clipPath="url(#ap-server-clip)">
+          <rect
+            x="96"
+            y={serverY}
+            width="128"
+            height={serverH + 10}
+            fill={liquid}
+            style={{ transition: 'y 0.35s linear, height 0.35s linear' }}
+          />
+          {/* Crystal ice cubes inside server */}
+          <g opacity="0.78">
+            <rect x="122" y="204" width="24" height="24" rx="4" transform="rotate(-12 134 216)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
+            <rect x="152" y="208" width="26" height="26" rx="4" transform="rotate(10 165 221)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
+            <rect x="178" y="202" width="22" height="22" rx="4" transform="rotate(-6 189 213)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
+          </g>
+        </g>
+
+        {/* Pressurized micro-filter shower streams */}
+        {step.phase === 'extract' && activePour && (
+          <g>
+            <line className="svg-pour-stream" x1="146" y1="162" x2="146" y2="212" stroke={liquid} strokeWidth="2.6" />
+            <line className="svg-pour-stream" x1="160" y1="162" x2="160" y2="216" stroke={crema} strokeWidth="3" />
+            <line className="svg-pour-stream" x1="174" y1="162" x2="174" y2="212" stroke={liquid} strokeWidth="2.6" />
+          </g>
+        )}
+
+        {/* AeroPress Hexagonal Skirt & Black Filter Cap */}
+        <rect x="104" y="152" width="112" height="7" rx="3.5" fill="#2A1D16" />
+        <rect x="130" y="156" width="60" height="8" rx="3" fill="#221610" />
+
+        {/* AeroPress Outer Translucent Chamber */}
+        <rect
+          x="128"
+          y="86"
+          width="64"
+          height="66"
+          rx="3"
+          fill="rgba(232, 224, 211, 0.82)"
+          stroke="#3E2A20"
+          strokeWidth="2.2"
+        />
+        {/* Coffee slurry inside chamber */}
+        {step.phase !== 'prep' && (
+          <rect
+            x="131"
+            y={98 + plungerOffset}
+            width="58"
+            height={Math.max(10, 52 - plungerOffset)}
+            fill={liquid}
+            opacity="0.88"
+            style={{ transition: 'all 0.35s linear' }}
+          />
+        )}
+
+        {/* AeroPress Inner Plunger */}
+        {step.phase !== 'prep' && (
+          <g transform={`translate(0, ${plungerOffset})`} style={{ transition: 'transform 0.35s linear' }}>
+            <rect x="122" y="34" width="76" height="8" rx="4" fill="#5A4638" stroke="#2E1F17" strokeWidth="1.8" />
+            <rect x="134" y="42" width="52" height="50" fill="#D8CFC1" stroke="#3E2A20" strokeWidth="1.8" />
+            {/* Rubber seal */}
+            <rect x="131" y="90" width="58" height="9" rx="3" fill="#221610" />
+          </g>
+        )}
+      </svg>
+    )
+  }
+
+  // 4. Espresso machine grouphead & golden crema demitasse
   if (coffee.method === 'espresso') {
     const cupHeight = Math.round((fillPercent / 100) * 58)
     const cupY = 224 - cupHeight
@@ -171,15 +387,11 @@ export function BrewAnimation({
           </clipPath>
         </defs>
 
-        {/* Espresso machine grouphead */}
         <rect x="92" y="24" width="136" height="36" rx="8" fill="#3E2A20" stroke="#221610" strokeWidth="2" />
         <rect x="116" y="60" width="88" height="22" rx="4" fill="#B5844A" stroke="#221610" strokeWidth="2" />
-        {/* Portafilter handle */}
         <rect x="202" y="66" width="76" height="11" rx="5.5" fill="#2A1D16" />
-        {/* Dual spouts */}
         <path d="M144 82 V96 M176 82 V96" stroke="#7A5B47" strokeWidth="6" strokeLinecap="round" />
 
-        {/* Tiger-stripe extraction stream */}
         {activePour && (
           <g>
             <line className="svg-pour-stream" x1="144" y1="98" x2="148" y2="180" stroke={crema} strokeWidth="4.5" strokeLinecap="round" />
@@ -187,10 +399,8 @@ export function BrewAnimation({
           </g>
         )}
 
-        {/* Saucer */}
         <ellipse cx="160" cy="238" rx="74" ry="10" fill="#EFE7D8" stroke="#B88446" strokeWidth="2.4" />
 
-        {/* Ceramic Demitasse Cup */}
         <path
           d="M114 156 H206 V196 C206 218 186 232 160 232 C134 232 114 218 114 196 Z"
           fill="#FCF9F3"
@@ -212,7 +422,7 @@ export function BrewAnimation({
             width="100"
             height={cupHeight + 16}
             fill={liquid}
-            style={{ transition: 'y 0.6s ease, height 0.6s ease' }}
+            style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
           />
           <rect
             x="110"
@@ -220,7 +430,7 @@ export function BrewAnimation({
             width="100"
             height="13"
             fill={crema}
-            style={{ transition: 'y 0.6s ease' }}
+            style={{ transition: 'y 0.4s linear' }}
           />
         </g>
 
@@ -229,7 +439,7 @@ export function BrewAnimation({
     )
   }
 
-  // 3. Milk Coffee (Flat White / Latte) with pouring pitcher & latte tulip art
+  // 5. Milk Coffee (Flat White / Latte) with pouring pitcher & latte tulip art
   if (coffee.method === 'milk') {
     const milkHeight = Math.round((fillPercent / 100) * 86)
     const milkY = 230 - milkHeight
@@ -241,7 +451,6 @@ export function BrewAnimation({
           </clipPath>
         </defs>
 
-        {/* Stainless milk pitcher tilting when pouring milk */}
         {step.hasMilk && (
           <g
             transform={
@@ -263,7 +472,6 @@ export function BrewAnimation({
           </g>
         )}
 
-        {/* Milk or espresso pour stream */}
         {activePour && (
           <line
             className="svg-pour-stream"
@@ -277,10 +485,8 @@ export function BrewAnimation({
           />
         )}
 
-        {/* Saucer */}
         <ellipse cx="160" cy="240" rx="86" ry="11" fill="#EFE7D8" stroke="#B88446" strokeWidth="2.4" />
 
-        {/* Wide Ceramic Latte Bowl */}
         <path
           d="M96 138 H224 V184 C224 216 196 234 160 234 C124 234 96 216 96 184 Z"
           fill="#FCF9F3"
@@ -302,7 +508,7 @@ export function BrewAnimation({
             width="136"
             height={milkHeight + 14}
             fill={step.hasMilk ? liquid : '#4B2817'}
-            style={{ transition: 'y 0.6s ease, height 0.6s ease, fill 0.5s ease' }}
+            style={{ transition: 'y 0.4s linear, height 0.4s linear, fill 0.5s ease' }}
           />
           {step.hasMilk && (
             <rect
@@ -311,12 +517,11 @@ export function BrewAnimation({
               width="136"
               height="20"
               fill={crema}
-              style={{ transition: 'y 0.6s ease' }}
+              style={{ transition: 'y 0.4s linear' }}
             />
           )}
         </g>
 
-        {/* Top foam surface with emerging latte tulip heart when nearly full */}
         {fillPercent >= 85 && (
           <g>
             <ellipse cx="160" cy="146" rx="58" ry="11" fill={accent} opacity="0.88" />
@@ -332,12 +537,13 @@ export function BrewAnimation({
     )
   }
 
-  // 4. Layered Dirty / Cold Brew / Sicilian Iced glass
+  // 6. Layered Dirty / Coconut Cloud / Einspänner / Cold Brew / Sicilian Iced glass
   if (coffee.method === 'dirty' || coffee.method === 'coldbrew' || coffee.method === 'iced') {
     const totalH = Math.round((fillPercent / 100) * 144)
     const topY = 232 - totalH
     const isDirty = coffee.method === 'dirty'
     const isLemon = coffee.method === 'iced'
+    const isCreamTop = coffee.id === 'viennese-einspanner'
 
     return (
       <svg viewBox="0 0 320 270" width="100%" style={{ maxWidth: 340 }} aria-label="冰饮与分层咖啡实时演示">
@@ -347,10 +553,8 @@ export function BrewAnimation({
           </clipPath>
         </defs>
 
-        {/* Coaster */}
         <rect x="86" y="242" width="148" height="10" rx="5" fill="#D5BE9A" stroke="#7A5B47" strokeWidth="1.4" />
 
-        {/* Pouring stream from top */}
         {activePour && (
           <line
             className="svg-pour-stream"
@@ -358,13 +562,12 @@ export function BrewAnimation({
             y1="26"
             x2="160"
             y2={Math.max(90, topY + 12)}
-            stroke={isDirty || step.phase === 'extract' ? liquid : '#B8D4DC'}
+            stroke={isCreamTop && step.phase === 'assemble' ? crema : isDirty || step.phase === 'extract' ? liquid : '#B8D4DC'}
             strokeWidth="5.5"
             strokeLinecap="round"
           />
         )}
 
-        {/* Glass Body */}
         <path
           d="M108 76 H212 L200 228 C199 235 193 240 186 240 H134 C127 240 121 235 120 228 Z"
           fill="rgba(255, 255, 255, 0.6)"
@@ -373,28 +576,35 @@ export function BrewAnimation({
         />
 
         <g clipPath="url(#glass-clip)">
-          {/* Base liquid (oat milk / lemon soda / cold brew) */}
           <rect
             x="102"
             y={topY}
             width="116"
             height={totalH + 14}
-            fill={isDirty ? crema : isLemon ? '#F2D985' : liquid}
-            style={{ transition: 'y 0.6s ease, height 0.6s ease' }}
+            fill={isCreamTop ? liquid : isDirty ? crema : isLemon ? '#F2D985' : liquid}
+            style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
           />
 
-          {/* Layered coffee cascade for Dirty or Sicilian */}
-          {(isDirty || isLemon) && fillPercent > 75 && (
+          {/* Layered cascade */}
+          {isCreamTop && fillPercent > 80 ? (
             <path
-              d={`M102 ${topY} H218 V${topY + 46} Q188 ${topY + 62} 160 ${topY + 50} T102 ${topY + 54} Z`}
-              fill={liquid}
-              opacity="0.92"
-              style={{ transition: 'all 0.6s ease' }}
+              d={`M102 ${topY} H218 V${topY + 38} Q188 ${topY + 46} 160 ${topY + 40} T102 ${topY + 42} Z`}
+              fill={crema}
+              style={{ transition: 'all 0.5s ease' }}
             />
+          ) : (
+            (isDirty || isLemon) &&
+            fillPercent > 75 && (
+              <path
+                d={`M102 ${topY} H218 V${topY + 46} Q188 ${topY + 62} 160 ${topY + 50} T102 ${topY + 54} Z`}
+                fill={liquid}
+                opacity="0.92"
+                style={{ transition: 'all 0.5s ease' }}
+              />
+            )
           )}
 
-          {/* Ice cubes */}
-          {step.hasIce && !isDirty && (
+          {step.hasIce && (
             <g opacity="0.72">
               <rect x="128" y="138" width="26" height="26" rx="5" transform="rotate(-10 141 151)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
               <rect x="160" y="156" width="28" height="28" rx="5" transform="rotate(14 174 170)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
@@ -402,7 +612,6 @@ export function BrewAnimation({
             </g>
           )}
 
-          {/* Lemon slice accent for Sicilian */}
           {isLemon && (
             <g transform="translate(186, 118) rotate(20)">
               <circle cx="0" cy="0" r="18" fill="#E8BE3C" stroke="#FFF4C2" strokeWidth="3" />
@@ -411,33 +620,30 @@ export function BrewAnimation({
             </g>
           )}
 
-          {/* Golden osmanthus petals for Dirty finish */}
           {isDirty && fillPercent >= 90 && (
-            <g fill="#E6B24C">
-              <circle cx="144" cy={topY + 8} r="3" />
-              <circle cx="158" cy={topY + 6} r="3.4" />
-              <circle cx="171" cy={topY + 9} r="2.8" />
-              <circle cx="152" cy={topY + 12} r="2.5" />
+            <g fill={isCreamTop ? '#7D4E32' : '#E6B24C'}>
+              <circle cx="144" cy={topY + 8} r="2.8" />
+              <circle cx="158" cy={topY + 6} r="3.2" />
+              <circle cx="171" cy={topY + 9} r="2.6" />
+              <circle cx="152" cy={topY + 12} r="2.2" />
             </g>
           )}
         </g>
 
-        {/* Glass highlight line */}
         <line x1="120" y1="90" x2="128" y2="220" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" opacity="0.65" />
+        <SteamCurls show={step.hasSteam} y={70} />
       </svg>
     )
   }
 
-  // 5. Classic Octagonal Moka Pot
+  // 7. Classic Octagonal Moka Pot
   const upperFill = Math.round((fillPercent / 100) * 66)
   return (
     <svg viewBox="0 0 320 270" width="100%" style={{ maxWidth: 340 }} aria-label="摩卡壶萃取实时演示">
-      {/* Flame / warmth glow at bottom */}
       {(step.phase === 'bloom' || step.phase === 'extract') && (
         <ellipse cx="160" cy="244" rx="56" ry="9" fill="#D97836" opacity="0.45" />
       )}
 
-      {/* Lower boiler chamber */}
       <polygon
         points="126,158 194,158 214,236 106,236"
         fill="#D7CFC2"
@@ -447,10 +653,8 @@ export function BrewAnimation({
       />
       <line x1="160" y1="158" x2="160" y2="236" stroke="#B7AEA0" strokeWidth="2" />
 
-      {/* Center brass valve */}
       <circle cx="186" cy="186" r="5" fill="#C28C4D" stroke="#3E2A20" strokeWidth="1.4" />
 
-      {/* Upper chamber */}
       <polygon
         points="108,82 212,82 194,158 126,158"
         fill="#EFE8DC"
@@ -459,7 +663,6 @@ export function BrewAnimation({
         strokeLinejoin="round"
       />
 
-      {/* Coffee level visible through cutaway window */}
       <rect
         x="128"
         y={154 - upperFill}
@@ -468,10 +671,9 @@ export function BrewAnimation({
         rx="4"
         fill={liquid}
         opacity="0.9"
-        style={{ transition: 'y 0.6s ease, height 0.6s ease' }}
+        style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
       />
 
-      {/* Center chimney column */}
       <rect x="155" y="102" width="10" height="54" rx="3" fill="#B7AEA0" stroke="#3E2A20" strokeWidth="1.5" />
       {activePour && (
         <g>
@@ -480,11 +682,9 @@ export function BrewAnimation({
         </g>
       )}
 
-      {/* Lid & Knob */}
       <path d="M108 82 L160 58 L212 82 Z" fill="#D7CFC2" stroke="#3E2A20" strokeWidth="2.4" strokeLinejoin="round" />
       <rect x="153" y="45" width="14" height="13" rx="4" fill="#2A1D16" />
 
-      {/* Side Handle */}
       <path
         d="M210 92 H234 C244 92 248 100 245 112 L232 152 H202"
         stroke="#2A1D16"

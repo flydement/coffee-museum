@@ -1,8 +1,22 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { COFFEE_EXHIBITS } from '../data/coffees'
-import type { CoffeeExhibit, SavedBrewRecord } from '../types/coffee'
-import { downloadTastingPostcard } from '../utils/exportCard'
-import { formatSeconds, playGentleChime, scaleRecipe } from '../utils/platform'
+import type {
+  CoffeeExhibit,
+  PostcardTheme,
+  SavedBrewRecord,
+  TasteCustomizePreset,
+} from '../types/coffee'
+import {
+  downloadTastingPostcard,
+  POSTCARD_THEME_OPTIONS,
+  renderPostcardDataUrl,
+} from '../utils/exportCard'
+import {
+  formatSeconds,
+  playGentleChime,
+  scaleRecipe,
+  TASTE_PRESET_OPTIONS,
+} from '../utils/platform'
 import { BrewAnimation } from './BrewAnimation'
 import { FlavorRadar } from './FlavorRadar'
 import { SoundIcon } from './Icons'
@@ -10,8 +24,10 @@ import { SoundIcon } from './Icons'
 interface BrewStudioProps {
   coffee: CoffeeExhibit
   servings: number
+  tastePreset: TasteCustomizePreset
   onChangeCoffee: (coffee: CoffeeExhibit) => void
   onChangeServings: (servings: number) => void
+  onChangeTastePreset: (preset: TasteCustomizePreset) => void
   onSaveToArchive: (record: SavedBrewRecord) => void
   onGoArchive: () => void
   existingCount: number
@@ -20,8 +36,10 @@ interface BrewStudioProps {
 export function BrewStudio({
   coffee,
   servings,
+  tastePreset,
   onChangeCoffee,
   onChangeServings,
+  onChangeTastePreset,
   onSaveToArchive,
   onGoArchive,
   existingCount,
@@ -29,43 +47,66 @@ export function BrewStudio({
   const [stepIndex, setStepIndex] = useState(0)
   const [remainingSec, setRemainingSec] = useState(coffee.steps[0]?.durationSec ?? 0)
   const [isRunning, setIsRunning] = useState(false)
+  const [autoAdvance, setAutoAdvance] = useState(true)
   const [muted, setMuted] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
+  const [prepChecks, setPrepChecks] = useState<string[]>([])
 
   // Completion tasting ceremony state
   const [rating, setRating] = useState(5)
   const [tastingNote, setTastingNote] = useState('')
+  const [completedAt, setCompletedAt] = useState(() => new Date().toISOString())
   const [savedRecord, setSavedRecord] = useState<SavedBrewRecord | null>(null)
+  const [postcardTheme, setPostcardTheme] = useState<PostcardTheme>('parchment')
 
   const currentStep = coffee.steps[stepIndex] ?? coffee.steps[0]
-  const scaled = scaleRecipe(coffee, servings)
+  const prevStep = stepIndex > 0 ? coffee.steps[stepIndex - 1] : undefined
+  const scaled = scaleRecipe(coffee, servings, tastePreset)
 
   const goToStep = useCallback(
-    (nextIndex: number) => {
+    (nextIndex: number, autoStart = false) => {
       if (nextIndex < 0) return
       if (nextIndex >= coffee.steps.length) {
         setIsRunning(false)
+        setCompletedAt(new Date().toISOString())
         setIsComplete(true)
         if (!muted) playGentleChime('complete')
         return
       }
+      const nextStepObj = coffee.steps[nextIndex]
       setIsComplete(false)
       setStepIndex(nextIndex)
-      setRemainingSec(coffee.steps[nextIndex].durationSec)
-      setIsRunning(false)
+      setRemainingSec(nextStepObj.durationSec)
+      setIsRunning(Boolean(autoStart && nextStepObj.durationSec > 0))
     },
     [coffee.steps, muted]
   )
 
-  // Countdown timer loop
+  // Countdown timer loop with optional hands-free auto-advance
   useEffect(() => {
     if (!isRunning || isComplete || remainingSec <= 0) return
     const timer = window.setInterval(() => {
       setRemainingSec((prev) => {
         if (prev <= 1) {
           window.clearInterval(timer)
-          setIsRunning(false)
-          if (!muted) playGentleChime('step')
+          if (autoAdvance) {
+            const nextIdx = stepIndex + 1
+            if (nextIdx >= coffee.steps.length) {
+              setIsRunning(false)
+              setCompletedAt(new Date().toISOString())
+              setIsComplete(true)
+              if (!muted) playGentleChime('complete')
+            } else {
+              const nextStepObj = coffee.steps[nextIdx]
+              if (!muted) playGentleChime('step')
+              setStepIndex(nextIdx)
+              setRemainingSec(nextStepObj.durationSec)
+              setIsRunning(nextStepObj.durationSec > 0)
+            }
+          } else {
+            setIsRunning(false)
+            if (!muted) playGentleChime('step')
+          }
           return 0
         }
         return prev - 1
@@ -73,7 +114,28 @@ export function BrewStudio({
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [isRunning, remainingSec, isComplete, muted])
+  }, [autoAdvance, coffee.steps, isComplete, isRunning, muted, remainingSec, stepIndex])
+
+  // Keep mobile/tablet screen awake during active countdown
+  useEffect(() => {
+    if (!isRunning || isComplete) return
+    let sentinel: { release: () => Promise<void> } | null = null
+    const nav = navigator as Navigator & {
+      wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> }
+    }
+    nav.wakeLock
+      ?.request('screen')
+      .then((lock) => {
+        sentinel = lock
+      })
+      .catch(() => {
+        // Ignore if unsupported by browser
+      })
+
+    return () => {
+      sentinel?.release().catch(() => {})
+    }
+  }, [isComplete, isRunning])
 
   // Keyboard shortcuts for PC/Web ergonomics
   useEffect(() => {
@@ -87,10 +149,10 @@ export function BrewStudio({
         setIsRunning((r) => !r)
       } else if (e.key === 'ArrowRight') {
         e.preventDefault()
-        goToStep(stepIndex + 1)
+        goToStep(stepIndex + 1, false)
       } else if (e.key === 'ArrowLeft' && stepIndex > 0) {
         e.preventDefault()
-        goToStep(stepIndex - 1)
+        goToStep(stepIndex - 1, false)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -99,13 +161,37 @@ export function BrewStudio({
 
   const stepDuration = currentStep.durationSec
   const stepProgress =
-    stepDuration > 0 ? Math.min(1, Math.max(0, (stepDuration - remainingSec) / stepDuration)) : 1
+    stepDuration > 0
+      ? Math.min(1, Math.max(0, (stepDuration - remainingSec) / stepDuration))
+      : 1
 
   const ringRadius = 40
   const ringCircumference = 2 * Math.PI * ringRadius
   const ringOffset = ringCircumference * (1 - stepProgress)
 
   const currentTargetMl = scaled.scaleTarget(currentStep.targetWaterMl)
+  const prevTargetMl = scaled.scaleTarget(prevStep?.targetWaterMl) ?? 0
+
+  // Smooth real-time virtual scale readout during pouring steps
+  const liveScaleMl =
+    currentTargetMl && currentStep.isPouring && stepDuration > 0
+      ? Math.round((prevTargetMl + (currentTargetMl - prevTargetMl) * stepProgress) * 10) / 10
+      : currentTargetMl
+
+  const pourRateMlPerSec =
+    currentTargetMl &&
+    currentStep.isPouring &&
+    stepDuration > 0 &&
+    currentTargetMl > prevTargetMl
+      ? ((currentTargetMl - prevTargetMl) / stepDuration).toFixed(1)
+      : null
+
+  const togglePrepCheck = (item: string) => {
+    if (!muted) playGentleChime('tick')
+    setPrepChecks((prev) =>
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
+    )
+  }
 
   const handleSaveArchive = () => {
     const record: SavedBrewRecord = {
@@ -117,10 +203,11 @@ export function BrewStudio({
       exhibitNo: coffee.exhibitNo,
       methodLabel: coffee.methodLabel,
       servings,
+      tastePreset,
       doseGrams: scaled.doseGrams,
       waterMl: scaled.waterMl,
       milkMl: scaled.milkMl,
-      waterTempC: coffee.recipe.waterTempC,
+      waterTempC: scaled.waterTempC,
       rating,
       tastingNote,
       brewedAt: new Date().toISOString(),
@@ -131,6 +218,49 @@ export function BrewStudio({
     onSaveToArchive(record)
     setSavedRecord(record)
   }
+
+  const previewRecord = useMemo<SavedBrewRecord>(() => {
+    if (savedRecord) return savedRecord
+    return {
+      recordId: 'preview',
+      catalogNumber: `#2026-${String(existingCount + 1).padStart(3, '0')}`,
+      coffeeId: coffee.id,
+      coffeeName: coffee.name,
+      englishName: coffee.englishName,
+      exhibitNo: coffee.exhibitNo,
+      methodLabel: coffee.methodLabel,
+      servings,
+      tastePreset,
+      doseGrams: scaled.doseGrams,
+      waterMl: scaled.waterMl,
+      milkMl: scaled.milkMl,
+      waterTempC: scaled.waterTempC,
+      rating,
+      tastingNote,
+      brewedAt: completedAt,
+      flavorNotes: coffee.flavorNotes,
+      flavorProfile: coffee.flavorProfile,
+      palette: coffee.palette,
+    }
+  }, [
+    coffee,
+    completedAt,
+    existingCount,
+    rating,
+    savedRecord,
+    scaled.doseGrams,
+    scaled.milkMl,
+    scaled.waterMl,
+    scaled.waterTempC,
+    servings,
+    tastePreset,
+    tastingNote,
+  ])
+
+  const postcardPreviewUrl = useMemo(() => {
+    if (!isComplete) return ''
+    return renderPostcardDataUrl(previewRecord, postcardTheme)
+  }, [isComplete, postcardTheme, previewRecord])
 
   return (
     <div>
@@ -169,7 +299,7 @@ export function BrewStudio({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <div className="serving-switcher" role="group" aria-label="调整杯数">
             {[1, 1.5, 2].map((s) => (
               <button
@@ -184,37 +314,109 @@ export function BrewStudio({
           </div>
 
           <button
+            id="studio-autoadvance-btn"
+            type="button"
+            className={`icon-pill-btn ${autoAdvance ? 'active' : ''}`}
+            onClick={() => setAutoAdvance((a) => !a)}
+            title="开启后倒计时归零将自动切换到下一步并继续计时，解放持壶双手"
+          >
+            <span>{autoAdvance ? '✓ 自动连贯跳步' : '手动切步'}</span>
+          </button>
+
+          <button
             id="studio-mute-btn"
             type="button"
-            className="btn btn-outline btn-sm"
+            className="icon-pill-btn"
             onClick={() => setMuted((m) => !m)}
             title={muted ? '开启提示音' : '静音提示音'}
           >
             <SoundIcon muted={muted} size={16} />
-            <span>{muted ? '已静音' : '计时提示音'}</span>
+            <span>{muted ? '已静音' : '提示音'}</span>
           </button>
         </div>
       </div>
+
+      {/* Interactive Taste Customizer Strip (before completion) */}
+      {!isComplete && (
+        <section className="taste-customizer-panel" aria-label="口味定制微调">
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: '0.84rem', fontWeight: 600 }}>
+              口味微调向导 · 按你喜欢的风味动态调整粉量与水温
+            </span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--brass-700)' }}>
+              {scaled.coachNote}
+            </span>
+          </div>
+          <div className="taste-preset-grid">
+            {TASTE_PRESET_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={`taste-preset-btn ${tastePreset === opt.id ? 'active' : ''}`}
+                onClick={() => onChangeTastePreset(opt.id)}
+              >
+                <div style={{ fontSize: '0.84rem', fontWeight: 600 }}>{opt.label}</div>
+                <div style={{ fontSize: '0.73rem', color: 'var(--espresso-600)' }}>
+                  {opt.shortHint}
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Completion Ceremony View */}
       {isComplete ? (
         <section className="ceremony-card" aria-label="冲煮完成出杯仪式">
           <div style={{ textAlign: 'center' }}>
-            <p className="eyebrow">BREW COMPLETE · 出杯仪式</p>
-            <div className="stage-visual-box" style={{ marginBottom: 16 }}>
-              <BrewAnimation
-                coffee={coffee}
-                step={coffee.steps[coffee.steps.length - 1]}
-                isRunning={false}
-                stepProgress={1}
-              />
+            <p className="eyebrow">MUSEUM POSTCARD PREVIEW · 实时纪念卡预览</p>
+            {postcardPreviewUrl ? (
+              <div className="postcard-preview-frame">
+                <img
+                  src={postcardPreviewUrl}
+                  alt={`${coffee.name} 馆藏品鉴明信片预览`}
+                />
+              </div>
+            ) : (
+              <FlavorRadar profile={coffee.flavorProfile} size={210} />
+            )}
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: 8,
+                flexWrap: 'wrap',
+                marginTop: 14,
+              }}
+            >
+              {POSTCARD_THEME_OPTIONS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`theme-swatch-btn ${postcardTheme === t.id ? 'active' : ''}`}
+                  onClick={() => setPostcardTheme(t.id)}
+                >
+                  <span className="swatch-dot" style={{ background: t.swatch }} />
+                  <span>{t.label}</span>
+                </button>
+              ))}
             </div>
-            <FlavorRadar profile={coffee.flavorProfile} size={200} />
           </div>
 
           <div>
             <span className="tag tag-brass mono" style={{ marginBottom: 10 }}>
-              {savedRecord ? `馆藏编号 ${savedRecord.catalogNumber}` : `${coffee.exhibitNo} · 新鲜出杯`}
+              {savedRecord
+                ? `馆藏编号 ${savedRecord.catalogNumber}`
+                : `${coffee.exhibitNo} · 新鲜出杯`}
             </span>
             <h2 className="section-heading">
               恭喜！你的「{coffee.name}」已制作完成
@@ -222,7 +424,7 @@ export function BrewStudio({
             <p className="section-lead" style={{ marginBottom: 18 }}>
               本次采用 {scaled.doseGrams}g 咖啡粉、{scaled.waterMl}ml 萃取液
               {scaled.milkMl ? ` 与 ${scaled.milkMl}ml ${coffee.recipe.milkLabel ?? '牛奶'}` : ''}
-              ，在 {coffee.recipe.waterTempC}°C 水温下完成萃取。趁热（或趁冰）细品它的风味层次：
+              ，在 {scaled.waterTempC}°C 水温下完成萃取。趁最佳赏味期细品它的风味层次：
             </p>
 
             <div className="pill-row" style={{ marginBottom: 20 }}>
@@ -236,7 +438,7 @@ export function BrewStudio({
             {!savedRecord ? (
               <div>
                 <div style={{ fontSize: '0.86rem', fontWeight: 600 }}>
-                  为这一杯打分（记录进你的博物馆档案）
+                  为这一杯打分（左侧明信片会实时同步你的星级与手记）
                 </div>
                 <div className="star-row" role="radiogroup" aria-label="风味评分">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -272,7 +474,14 @@ export function BrewStudio({
                   <button
                     type="button"
                     className="btn btn-outline"
-                    onClick={() => goToStep(0)}
+                    onClick={() => downloadTastingPostcard(previewRecord, postcardTheme)}
+                  >
+                    直接导出 PNG 明信片
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => goToStep(0, false)}
                   >
                     重新冲煮一杯
                   </button>
@@ -291,16 +500,16 @@ export function BrewStudio({
                   ✓ 已永久收入「我的馆藏」 · 编号 {savedRecord.catalogNumber}
                 </div>
                 <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: 'var(--espresso-800)' }}>
-                  你可以导出这张高清复古咖啡博物馆纪念明信片保存分享，或前往馆藏陈列室查看已解锁徽章。
+                  可在左侧切换三种纸张主题并导出高清纪念明信片，或前往馆藏陈列室查看已解锁徽章。
                 </p>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <button
                     id="export-postcard-btn"
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => downloadTastingPostcard(savedRecord)}
+                    onClick={() => downloadTastingPostcard(savedRecord, postcardTheme)}
                   >
-                    导出 PNG 纪念明信片
+                    下载当前主题明信片
                   </button>
                   <button
                     type="button"
@@ -312,7 +521,7 @@ export function BrewStudio({
                   <button
                     type="button"
                     className="btn btn-ghost"
-                    onClick={() => goToStep(0)}
+                    onClick={() => goToStep(0, false)}
                   >
                     再冲一杯
                   </button>
@@ -337,6 +546,7 @@ export function BrewStudio({
               <BrewAnimation
                 coffee={coffee}
                 step={currentStep}
+                prevVisualLevel={prevStep?.visualLevel}
                 isRunning={isRunning}
                 stepProgress={stepProgress}
               />
@@ -352,22 +562,32 @@ export function BrewStudio({
               </div>
             </div>
 
-            <div className="scale-readout-bar" aria-label="电子秤与水温参数">
+            <div className="scale-readout-bar" aria-label="实时电子秤与水温参数">
               <div>
                 <span className="scale-cell-label">咖啡粉量</span>
                 <span className="scale-cell-val">{scaled.doseGrams} g</span>
               </div>
               <div>
                 <span className="scale-cell-label">
-                  {currentTargetMl ? '本步目标累计' : '目标总液量'}
+                  {liveScaleMl && isRunning && currentStep.isPouring
+                    ? '实时跟随秤重'
+                    : currentTargetMl
+                      ? '本步目标累计'
+                      : '目标总液量'}
                 </span>
                 <span className="scale-cell-val">
-                  {currentTargetMl ? `${currentTargetMl} ml` : `${scaled.waterMl} ml`}
+                  {liveScaleMl ? `${liveScaleMl} ml` : `${scaled.waterMl} ml`}
                 </span>
               </div>
               <div>
-                <span className="scale-cell-label">建议水温</span>
-                <span className="scale-cell-val">{coffee.recipe.waterTempC} °C</span>
+                <span className="scale-cell-label">
+                  {pourRateMlPerSec ? '建议注水流速' : '建议水温'}
+                </span>
+                <span className="scale-cell-val">
+                  {pourRateMlPerSec
+                    ? `${pourRateMlPerSec} ml/s`
+                    : `${scaled.waterTempC} °C`}
+                </span>
               </div>
             </div>
 
@@ -382,7 +602,7 @@ export function BrewStudio({
                 gap: 8,
               }}
             >
-              <span>粉水比：{coffee.recipe.ratioLabel}</span>
+              <span>水温：{scaled.waterTempC}°C · 粉水比 {coffee.recipe.ratioLabel}</span>
               <span>PC 快捷键：空格计时 · ←/→ 切步</span>
             </div>
           </div>
@@ -398,7 +618,7 @@ export function BrewStudio({
                   className={`step-rail-seg ${
                     idx < stepIndex ? 'done' : idx === stepIndex ? 'current' : ''
                   }`}
-                  onClick={() => goToStep(idx)}
+                  onClick={() => goToStep(idx, false)}
                 />
               ))}
             </div>
@@ -424,7 +644,12 @@ export function BrewStudio({
             {currentStep.durationSec > 0 ? (
               <div className="timer-panel">
                 <div className="timer-ring-wrap">
-                  <svg width="96" height="96" viewBox="0 0 96 96" style={{ transform: 'rotate(-90deg)' }}>
+                  <svg
+                    width="96"
+                    height="96"
+                    viewBox="0 0 96 96"
+                    style={{ transform: 'rotate(-90deg)' }}
+                  >
                     <circle
                       cx="48"
                       cy="48"
@@ -454,7 +679,9 @@ export function BrewStudio({
                     {remainingSec === 0
                       ? '✓ 本步骤建议计时已完成，可以进入下一步'
                       : isRunning
-                        ? '正在稳定计时中，保持呼吸与水流节奏…'
+                        ? pourRateMlPerSec
+                          ? `正在实时导引注水（保持约 ${pourRateMlPerSec} ml/s 稳定水流）…`
+                          : '正在稳定计时中，保持呼吸与节奏…'
                         : `建议本步耗时 ${currentStep.durationSec} 秒，准备好即可开始计时`}
                   </div>
                   <div className="timer-btn-row">
@@ -494,12 +721,34 @@ export function BrewStudio({
                 </div>
               </div>
             ) : (
-              <div className="timer-panel" style={{ justifyContent: 'space-between' }}>
+              <div className="timer-panel" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>准备阶段 · 无需倒计时</div>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>准备阶段 · 备料确认清单</div>
                   <div style={{ fontSize: '0.84rem', color: 'var(--espresso-600)' }}>
-                    按上方说明备好 {scaled.doseGrams}g 咖啡粉与器具后，点击下方“下一步”正式开始萃取。
+                    可逐项勾选确认准备就绪，随后点击下方“下一步操作”进入实时计时：
                   </div>
+                </div>
+                <div className="prep-checklist">
+                  {[
+                    `称取 ${scaled.doseGrams}g 粉`,
+                    '温热杯具与器具',
+                    scaled.waterTempC <= 15
+                      ? '备好冰水/冰块'
+                      : `水温备至 ${scaled.waterTempC}°C`,
+                  ].map((item) => {
+                    const checked = prepChecks.includes(item)
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        className={`prep-check-btn ${checked ? 'checked' : ''}`}
+                        onClick={() => togglePrepCheck(item)}
+                      >
+                        <span>{checked ? '✓' : '○'}</span>
+                        <span>{item}</span>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -518,17 +767,28 @@ export function BrewStudio({
                   className={`step-outline-item ${
                     idx === stepIndex ? 'current' : idx < stepIndex ? 'done' : ''
                   }`}
-                  onClick={() => goToStep(idx)}
+                  onClick={() => goToStep(idx, false)}
                 >
                   <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span className="mono" style={{ fontSize: '0.78rem', color: 'var(--brass-700)' }}>
+                    <span
+                      className="mono"
+                      style={{ fontSize: '0.78rem', color: 'var(--brass-700)' }}
+                    >
                       {idx < stepIndex ? '✓' : String(idx + 1).padStart(2, '0')}
                     </span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: idx === stepIndex ? 600 : 400 }}>
+                    <span
+                      style={{
+                        fontSize: '0.9rem',
+                        fontWeight: idx === stepIndex ? 600 : 400,
+                      }}
+                    >
                       {s.title}
                     </span>
                   </span>
-                  <span className="mono" style={{ fontSize: '0.78rem', color: 'var(--espresso-600)' }}>
+                  <span
+                    className="mono"
+                    style={{ fontSize: '0.78rem', color: 'var(--espresso-600)' }}
+                  >
                     {s.durationSec > 0 ? `${s.durationSec}s` : '准备'}
                   </span>
                 </button>
@@ -542,7 +802,7 @@ export function BrewStudio({
                 className="btn btn-outline"
                 disabled={stepIndex === 0}
                 style={{ opacity: stepIndex === 0 ? 0.45 : 1 }}
-                onClick={() => goToStep(stepIndex - 1)}
+                onClick={() => goToStep(stepIndex - 1, false)}
               >
                 ← 上一步
               </button>
@@ -551,11 +811,18 @@ export function BrewStudio({
                 id="studio-next-step-btn"
                 type="button"
                 className="btn btn-primary btn-lg"
-                onClick={() => goToStep(stepIndex + 1)}
+                onClick={() =>
+                  goToStep(
+                    stepIndex + 1,
+                    stepIndex === 0 && autoAdvance
+                  )
+                }
               >
                 {stepIndex === coffee.steps.length - 1
                   ? '完成冲煮 · 迎接出杯 →'
-                  : '下一步操作 →'}
+                  : stepIndex === 0 && autoAdvance
+                    ? '开始冲煮并启动计时 →'
+                    : '下一步操作 →'}
               </button>
             </div>
           </div>

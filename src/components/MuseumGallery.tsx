@@ -1,15 +1,25 @@
 import { useMemo, useState } from 'react'
 import { COFFEE_EXHIBITS } from '../data/coffees'
-import type { CoffeeExhibit, DrinkCategory } from '../types/coffee'
-import { scaleRecipe } from '../utils/platform'
+import type {
+  CoffeeExhibit,
+  DrinkCategory,
+  TasteCustomizePreset,
+} from '../types/coffee'
+import { scaleRecipe, TASTE_PRESET_OPTIONS } from '../utils/platform'
 import { FlavorRadar } from './FlavorRadar'
-import { CupEmblem } from './Icons'
+import { BookmarkHeartIcon, CupEmblem } from './Icons'
 
 interface MuseumGalleryProps {
   inspectedCoffee: CoffeeExhibit | null
   onInspect: (coffee: CoffeeExhibit | null) => void
-  onStartBrew: (coffee: CoffeeExhibit, servings?: number) => void
+  onStartBrew: (
+    coffee: CoffeeExhibit,
+    servings?: number,
+    tastePreset?: TasteCustomizePreset
+  ) => void
   unlockedIds: Set<string>
+  wishlistIds: Set<string>
+  onToggleWishlist: (coffeeId: string) => void
 }
 
 const CATEGORIES: ('全部' | DrinkCategory)[] = [
@@ -20,20 +30,35 @@ const CATEGORIES: ('全部' | DrinkCategory)[] = [
   '复古器具',
 ]
 
+type RoastFilter = 'all' | 'light' | 'medium' | 'dark'
+
 export function MuseumGallery({
   inspectedCoffee,
   onInspect,
   onStartBrew,
   unlockedIds,
+  wishlistIds,
+  onToggleWishlist,
 }: MuseumGalleryProps) {
   const [category, setCategory] = useState<'全部' | DrinkCategory>('全部')
+  const [roastFilter, setRoastFilter] = useState<RoastFilter>('all')
+  const [onlyWishlist, setOnlyWishlist] = useState(false)
   const [search, setSearch] = useState('')
   const [modalServings, setModalServings] = useState(1)
+  const [modalPreset, setModalPreset] = useState<TasteCustomizePreset>('standard')
+
+  // Dual-coffee comparison state (up to 2 IDs)
+  const [compareIds, setCompareIds] = useState<string[]>([])
+  const [showCompareModal, setShowCompareModal] = useState(false)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return COFFEE_EXHIBITS.filter((c) => {
       if (category !== '全部' && c.category !== category) return false
+      if (onlyWishlist && !wishlistIds.has(c.id)) return false
+      if (roastFilter === 'light' && c.roastValue > 2) return false
+      if (roastFilter === 'medium' && c.roastValue !== 3) return false
+      if (roastFilter === 'dark' && c.roastValue < 4) return false
       if (!q) return true
       return (
         c.name.toLowerCase().includes(q) ||
@@ -43,12 +68,29 @@ export function MuseumGallery({
         c.methodLabel.toLowerCase().includes(q)
       )
     })
-  }, [category, search])
+  }, [category, onlyWishlist, roastFilter, search, wishlistIds])
 
   const openModal = (coffee: CoffeeExhibit) => {
     setModalServings(1)
+    setModalPreset('standard')
     onInspect(coffee)
   }
+
+  const toggleCompare = (id: string) => {
+    setCompareIds((prev) => {
+      if (prev.includes(id)) return prev.filter((item) => item !== id)
+      if (prev.length >= 2) return [prev[1], id]
+      return [...prev, id]
+    })
+  }
+
+  const comparePair = useMemo(
+    () =>
+      compareIds
+        .map((id) => COFFEE_EXHIBITS.find((c) => c.id === id))
+        .filter((c): c is CoffeeExhibit => Boolean(c)),
+    [compareIds]
+  )
 
   return (
     <div>
@@ -57,33 +99,65 @@ export function MuseumGallery({
           <p className="eyebrow">PERMANENT COLLECTION · 永久馆藏名录</p>
           <h1 className="section-heading">世界咖啡风味展厅</h1>
           <p className="section-lead">
-            从埃塞俄比亚高地花香手冲到米兰经典浓缩与亚洲新派特调，查阅每一款风味的产地档案、研磨刻度与实时换算粉水比。
+            收录 {COFFEE_EXHIBITS.length} 款经典与创意馆藏，支持按烘焙度与想喝清单检索，或任选两款开启「双豆风味雷达对比」。
           </p>
         </div>
-        <span className="tag tag-sage mono">
-          已点亮 {unlockedIds.size} / {COFFEE_EXHIBITS.length} 款藏品
-        </span>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {wishlistIds.size > 0 && (
+            <button
+              type="button"
+              className={`filter-pill ${onlyWishlist ? 'active' : ''}`}
+              onClick={() => setOnlyWishlist((w) => !w)}
+            >
+              ♥ 想喝清单 ({wishlistIds.size})
+            </button>
+          )}
+          <span className="tag tag-sage mono">
+            已点亮 {unlockedIds.size} / {COFFEE_EXHIBITS.length} 款藏品
+          </span>
+        </div>
       </div>
 
       <div className="gallery-toolbar">
-        <div className="pill-row">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              className={`filter-pill ${category === cat ? 'active' : ''}`}
-              onClick={() => setCategory(cat)}
-            >
-              {cat}
-            </button>
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="pill-row">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`filter-pill ${category === cat ? 'active' : ''}`}
+                onClick={() => setCategory(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="pill-row">
+            {[
+              { id: 'all' as const, label: '全部烘焙度' },
+              { id: 'light' as const, label: '浅烘 · 花果茶感' },
+              { id: 'medium' as const, label: '中烘 · 甜润平衡' },
+              { id: 'dark' as const, label: '中深/深烘 · 坚果黑巧' },
+            ].map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className={`mood-pill ${roastFilter === r.id ? 'active' : ''}`}
+                style={{ padding: '4px 11px', fontSize: '0.78rem' }}
+                onClick={() => setRoastFilter(r.id)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <input
           id="gallery-search-input"
           type="search"
           className="search-input"
-          placeholder="搜索风味、产区或器具（如 桂花 / 耶加）"
+          placeholder="搜索风味、产区或器具（如 生椰 / 法压 / 耶加）"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -92,17 +166,39 @@ export function MuseumGallery({
       <div className="gallery-grid">
         {filtered.map((coffee) => {
           const isUnlocked = unlockedIds.has(coffee.id)
+          const wished = wishlistIds.has(coffee.id)
+          const inCompare = compareIds.includes(coffee.id)
+
           return (
             <article key={coffee.id} className="exhibit-card">
               <div className="exhibit-top-row">
                 <span className="exhibit-no">
                   {coffee.exhibitNo} · {coffee.storyYear}
                 </span>
-                {isUnlocked ? (
-                  <span className="tag tag-sage">已点亮</span>
-                ) : (
-                  <span className="tag">{coffee.recipe.difficulty}</span>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {isUnlocked ? (
+                    <span className="tag tag-sage">已点亮</span>
+                  ) : (
+                    <span className="tag">{coffee.recipe.difficulty}</span>
+                  )}
+                  <button
+                    type="button"
+                    className={`mood-pill ${inCompare ? 'active' : ''}`}
+                    style={{ padding: '3px 8px', fontSize: '0.72rem' }}
+                    onClick={() => toggleCompare(coffee.id)}
+                    title="加入双豆风味对比"
+                  >
+                    {inCompare ? '✓ 对比中' : '+ 对比'}
+                  </button>
+                  <button
+                    type="button"
+                    className="wishlist-icon-btn"
+                    aria-label={wished ? '移出想喝清单' : '加入想喝清单'}
+                    onClick={() => onToggleWishlist(coffee.id)}
+                  >
+                    <BookmarkHeartIcon saved={wished} size={14} />
+                  </button>
+                </div>
               </div>
 
               <div className="exhibit-headline-wrap">
@@ -147,7 +243,7 @@ export function MuseumGallery({
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
-                  onClick={() => onStartBrew(coffee, 1)}
+                  onClick={() => onStartBrew(coffee, 1, 'standard')}
                 >
                   进入冲煮
                 </button>
@@ -161,18 +257,59 @@ export function MuseumGallery({
         <div className="archive-empty" style={{ marginTop: 24 }}>
           <h3 className="exhibit-title">未找到匹配的咖啡馆藏</h3>
           <p className="section-lead" style={{ margin: '8px auto 18px' }}>
-            试试切换分类或清空搜索关键词。
+            试试切换分类、烘焙度或清空搜索关键词。
           </p>
           <button
             type="button"
             className="btn btn-outline"
             onClick={() => {
               setCategory('全部')
+              setRoastFilter('all')
+              setOnlyWishlist(false)
               setSearch('')
             }}
           >
-            显示全部馆藏
+            重置全部筛选
           </button>
+        </div>
+      )}
+
+      {/* Floating Comparison Bar */}
+      {comparePair.length > 0 && (
+        <div className="compare-bar" role="region" aria-label="馆藏对比栏">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span className="mono" style={{ fontSize: '0.76rem', color: 'var(--brass-700)', fontWeight: 600 }}>
+              风味对比台 ({comparePair.length}/2)
+            </span>
+            {comparePair.map((c) => (
+              <span key={c.id} className="tag tag-brass">
+                {c.name.split('·')[0].trim()}
+              </span>
+            ))}
+            {comparePair.length === 1 && (
+              <span style={{ fontSize: '0.8rem', color: 'var(--espresso-600)' }}>
+                再选 1 款即可叠加五维风味图对比
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setCompareIds([])}
+            >
+              清空
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={comparePair.length < 2}
+              style={{ opacity: comparePair.length < 2 ? 0.5 : 1 }}
+              onClick={() => setShowCompareModal(true)}
+            >
+              开启双豆对比 →
+            </button>
+          </div>
         </div>
       )}
 
@@ -181,11 +318,26 @@ export function MuseumGallery({
         <SpecimenModal
           coffee={inspectedCoffee}
           servings={modalServings}
+          tastePreset={modalPreset}
           onChangeServings={setModalServings}
+          onChangeTastePreset={setModalPreset}
           onClose={() => onInspect(null)}
-          onStartBrew={(c, s) => {
+          onStartBrew={(c, s, preset) => {
             onInspect(null)
-            onStartBrew(c, s)
+            onStartBrew(c, s, preset)
+          }}
+        />
+      )}
+
+      {/* Dual Exhibit Comparison Modal */}
+      {showCompareModal && comparePair.length === 2 && (
+        <CompareExhibitsModal
+          first={comparePair[0]}
+          second={comparePair[1]}
+          onClose={() => setShowCompareModal(false)}
+          onStartBrew={(c) => {
+            setShowCompareModal(false)
+            onStartBrew(c, 1, 'standard')
           }}
         />
       )}
@@ -193,20 +345,167 @@ export function MuseumGallery({
   )
 }
 
+function CompareExhibitsModal({
+  first,
+  second,
+  onClose,
+  onStartBrew,
+}: {
+  first: CoffeeExhibit
+  second: CoffeeExhibit
+  onClose: () => void
+  onStartBrew: (coffee: CoffeeExhibit) => void
+}) {
+  return (
+    <div
+      className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="双豆风味对比"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="specimen-modal">
+        <button type="button" className="modal-close" aria-label="关闭对比" onClick={onClose}>
+          ×
+        </button>
+
+        <p className="eyebrow">CURATORIAL COMPARISON · 双展品风味与参数对照</p>
+        <h2 className="section-heading" style={{ fontSize: '1.45rem', marginBottom: 14 }}>
+          {first.name} <span style={{ color: 'var(--brass-600)' }}>vs</span> {second.name}
+        </h2>
+
+        <div className="specimen-grid" style={{ alignItems: 'center' }}>
+          <div>
+            <table className="compare-table">
+              <thead>
+                <tr>
+                  <th>对比维度</th>
+                  <th style={{ color: 'var(--brass-700)', fontWeight: 700 }}>
+                    ● {first.name.split('·')[0].trim()}
+                  </th>
+                  <th style={{ color: 'var(--sage-600)', fontWeight: 700 }}>
+                    ◆ {second.name.split('·')[0].trim()}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th>产区与处理</th>
+                  <td>{first.origin.split('·')[0]} · {first.process}</td>
+                  <td>{second.origin.split('·')[0]} · {second.process}</td>
+                </tr>
+                <tr>
+                  <th>烘焙与温度</th>
+                  <td>{first.roast} · {first.temperature}</td>
+                  <td>{second.roast} · {second.temperature}</td>
+                </tr>
+                <tr>
+                  <th>器具与水温</th>
+                  <td>{first.methodLabel} · {first.recipe.waterTempC}°C</td>
+                  <td>{second.methodLabel} · {second.recipe.waterTempC}°C</td>
+                </tr>
+                <tr>
+                  <th>标准粉水比</th>
+                  <td className="mono">{first.recipe.ratioLabel}</td>
+                  <td className="mono">{second.recipe.ratioLabel}</td>
+                </tr>
+                <tr>
+                  <th>研磨粗细</th>
+                  <td>刻度 {first.recipe.grindLevel}/10</td>
+                  <td>刻度 {second.recipe.grindLevel}/10</td>
+                </tr>
+                <tr>
+                  <th>核心风味调</th>
+                  <td>{first.flavorNotes.slice(0, 3).join(' / ')}</td>
+                  <td>{second.flavorNotes.slice(0, 3).join(' / ')}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                style={{ flex: 1 }}
+                onClick={() => onStartBrew(first)}
+              >
+                冲煮 {first.name.split('·')[0].trim()}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                style={{ flex: 1 }}
+                onClick={() => onStartBrew(second)}
+              >
+                冲煮 {second.name.split('·')[0].trim()}
+              </button>
+            </div>
+          </div>
+
+          <div
+            style={{
+              background: 'var(--paper-bg)',
+              borderRadius: 'var(--radius-lg)',
+              padding: 18,
+              border: '1px solid var(--border-subtle)',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: '0.82rem', fontWeight: 600, marginBottom: 6 }}>
+              五维风味重叠对照图
+            </div>
+            <FlavorRadar
+              profile={first.flavorProfile}
+              compareProfile={second.flavorProfile}
+              size={236}
+            />
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: 16,
+                fontSize: '0.78rem',
+                marginTop: 8,
+              }}
+            >
+              <span style={{ color: 'var(--brass-700)', fontWeight: 600 }}>
+                ━━ {first.name.split('·')[0].trim()}
+              </span>
+              <span style={{ color: 'var(--sage-600)', fontWeight: 600 }}>
+                ┅┅ {second.name.split('·')[0].trim()}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function SpecimenModal({
   coffee,
   servings,
+  tastePreset,
   onChangeServings,
+  onChangeTastePreset,
   onClose,
   onStartBrew,
 }: {
   coffee: CoffeeExhibit
   servings: number
+  tastePreset: TasteCustomizePreset
   onChangeServings: (s: number) => void
+  onChangeTastePreset: (p: TasteCustomizePreset) => void
   onClose: () => void
-  onStartBrew: (coffee: CoffeeExhibit, servings: number) => void
+  onStartBrew: (
+    coffee: CoffeeExhibit,
+    servings: number,
+    tastePreset: TasteCustomizePreset
+  ) => void
 }) {
-  const scaled = scaleRecipe(coffee, servings)
+  const scaled = scaleRecipe(coffee, servings, tastePreset)
 
   return (
     <div
@@ -270,6 +569,31 @@ function SpecimenModal({
               </div>
             </div>
 
+            {/* Taste Customizer inside Specimen Modal */}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--espresso-600)', marginBottom: 6 }}>
+                按你偏好的入口微调配方：
+              </div>
+              <div className="pill-row">
+                {TASTE_PRESET_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={`mood-pill ${tastePreset === opt.id ? 'active' : ''}`}
+                    style={{ padding: '5px 10px', fontSize: '0.78rem' }}
+                    onClick={() => onChangeTastePreset(opt.id)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {tastePreset !== 'standard' && (
+                <div style={{ fontSize: '0.76rem', color: 'var(--brass-700)', marginTop: 6 }}>
+                  ✦ {scaled.coachNote}
+                </div>
+              )}
+            </div>
+
             <div className="spec-kpi-grid">
               <div className="spec-kpi">
                 <span className="spec-kpi-label">咖啡粉量</span>
@@ -278,14 +602,14 @@ function SpecimenModal({
               <div className="spec-kpi">
                 <span className="spec-kpi-label">
                   {coffee.method === 'espresso' || coffee.method === 'milk' || coffee.method === 'dirty'
-                    ? '浓缩萃取液重'
+                    ? '浓缩/基底液重'
                     : '目标注水量'}
                 </span>
                 <span className="spec-kpi-value">{scaled.waterMl} ml</span>
               </div>
               <div className="spec-kpi">
                 <span className="spec-kpi-label">建议水温</span>
-                <span className="spec-kpi-value">{coffee.recipe.waterTempC} °C</span>
+                <span className="spec-kpi-value">{scaled.waterTempC} °C</span>
               </div>
               <div className="spec-kpi">
                 <span className="spec-kpi-label">
@@ -364,7 +688,7 @@ function SpecimenModal({
               type="button"
               className="btn btn-primary btn-lg"
               style={{ width: '100%', marginTop: 18 }}
-              onClick={() => onStartBrew(coffee, servings)}
+              onClick={() => onStartBrew(coffee, servings, tastePreset)}
             >
               按此参数进入冲煮工坊（{coffee.steps.length} 步）
             </button>

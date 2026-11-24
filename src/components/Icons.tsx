@@ -65,7 +65,12 @@ export function KettleIcon({ size = 18 }: IconProps) {
         strokeLinejoin="round"
       />
       <path d="M8.5 7.5H14.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <path d="M16.5 11.5H18.8C19.8 11.5 20.5 12.3 20.5 13.3V15C20.5 16 19.8 16.8 18.8 16.8H17.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M16.5 11.5H18.8C19.8 11.5 20.5 12.3 20.5 13.3V15C20.5 16 19.8 16.8 18.8 16.8H17.2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
       <path d="M6.5 15.5C4.5 14.5 3.6 12.2 2.8 10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
     </svg>
   )
@@ -104,6 +109,66 @@ export function SoundIcon({ muted, size = 18 }: { muted: boolean; size?: number 
   )
 }
 
+export function AmbienceIcon({ active, size = 17 }: { active: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 15.5C4.8 15.5 3.5 14 3.5 12C3.5 10.2 4.7 8.8 6.5 8.5C7.3 6.2 9.5 4.8 12.1 4.8C15.4 4.8 18 7.3 18.2 10.5C19.8 10.9 20.8 12.2 20.8 13.8C20.8 15.6 19.3 16.5 17.5 16.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8.5 18L7.5 20.5M12.2 18L11.2 20.5M15.8 18L14.8 20.5"
+        stroke={active ? '#C79355' : 'currentColor'}
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        opacity={active ? 1 : 0.55}
+      />
+    </svg>
+  )
+}
+
+export function ThemeLampIcon({ dark, size = 17 }: { dark: boolean; size?: number }) {
+  if (dark) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="1.7" />
+        <path
+          d="M12 3V5M12 19V21M3 12H5M19 12H21M5.6 5.6L7 7M17 17L18.4 18.4M18.4 5.6L17 7M7 17L5.6 18.4"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+        />
+      </svg>
+    )
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M20 14.5C18.6 15.2 17 15.5 15.3 15.5C10.4 15.5 6.5 11.6 6.5 6.7C6.5 5.4 6.8 4.1 7.3 3C4.7 4.4 3 7.2 3 10.5C3 15.4 7 19.4 11.9 19.4C15.5 19.4 18.6 17.4 20 14.5Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function BookmarkHeartIcon({ saved, size = 16 }: { saved: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 20.2C12 20.2 4.5 15.2 4.5 9.4C4.5 6.8 6.5 4.8 9 4.8C10.5 4.8 11.5 5.5 12 6.4C12.5 5.5 13.5 4.8 15 4.8C17.5 4.8 19.5 6.8 19.5 9.4C19.5 15.2 12 20.2 12 20.2Z"
+        fill={saved ? '#B8523B' : 'none'}
+        stroke={saved ? '#B8523B' : 'currentColor'}
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export function CupEmblem({
   method,
   liquid,
@@ -121,6 +186,31 @@ export function CupEmblem({
         <path d="M14 21H26L29 32C29 33.7 27.7 35 26 35H14C12.3 35 11 33.7 11 32L14 21Z" stroke="#3E2A20" strokeWidth="1.8" fill="#FCF9F3" />
         <path d="M12.5 28H27.5L28.4 32C28.4 33.2 27.3 34 26 34H14C12.7 34 11.6 33.2 11.6 32L12.5 28Z" fill={liquid} />
         <line x1="20" y1="20" x2="20" y2="28" stroke={crema} strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  if (method === 'frenchpress') {
+    return (
+      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="11" y="10" width="17" height="24" rx="2.5" fill="#FCF9F3" stroke="#3E2A20" strokeWidth="1.8" />
+        <rect x="12" y="18" width="15" height="15" rx="1.5" fill={liquid} />
+        <line x1="19.5" y1="5" x2="19.5" y2="22" stroke="#3E2A20" strokeWidth="1.8" strokeLinecap="round" />
+        <line x1="12.5" y1="22" x2="26.5" y2="22" stroke="#B88446" strokeWidth="2.2" />
+        <path d="M9.5 10H29.5" stroke="#3E2A20" strokeWidth="2" strokeLinecap="round" />
+        <path d="M28 14H31.5C32.6 14 33.5 15 33.5 16.2V26C33.5 27.2 32.6 28 31.5 28H28" stroke="#3E2A20" strokeWidth="1.8" />
+      </svg>
+    )
+  }
+
+  if (method === 'aeropress') {
+    return (
+      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="14" y="6" width="12" height="10" rx="1.5" fill="#D8CEBE" stroke="#3E2A20" strokeWidth="1.7" />
+        <rect x="12.5" y="15" width="15" height="12" rx="1.5" fill="#EFE7D8" stroke="#3E2A20" strokeWidth="1.8" />
+        <rect x="14" y="19" width="12" height="7" fill={liquid} opacity="0.9" />
+        <path d="M10 27H30" stroke="#3E2A20" strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M13 28H27L25.5 35.5H14.5L13 28Z" fill={liquid} stroke="#3E2A20" strokeWidth="1.7" />
       </svg>
     )
   }

@@ -3,7 +3,10 @@ import type {
   CuratorBadge,
   FlavorPreference,
   SavedBrewRecord,
+  TasteCustomizePreset,
 } from '../types/coffee'
+
+export { playGentleChime, setCafeAmbience } from './audio'
 
 declare global {
   interface Window {
@@ -95,15 +98,69 @@ export function scoreExhibitMatch(
   return score
 }
 
-export function scaleRecipe(coffee: CoffeeExhibit, servings: number) {
+export const TASTE_PRESET_OPTIONS: {
+  id: TasteCustomizePreset
+  label: string
+  shortHint: string
+}[] = [
+  { id: 'standard', label: '馆藏标准', shortHint: '策展师黄金平衡参数' },
+  { id: 'sweet', label: '更甜润柔和', shortHint: '柔化酸苦 · 突出焦糖与果甜' },
+  { id: 'bright', label: '更清爽花果', shortHint: '拉高水粉比 · 口感清透如茶' },
+  { id: 'bold', label: '更浓郁醇厚', shortHint: '增加粉量 · 油脂与甜感更饱满' },
+]
+
+export function scaleRecipe(
+  coffee: CoffeeExhibit,
+  servings: number,
+  tastePreset: TasteCustomizePreset = 'standard'
+) {
   const factor = Math.max(0.5, Math.min(4, servings))
+
+  let doseMultiplier = 1
+  let waterMultiplier = 1
+  let tempDelta = 0
+  let coachNote = '按馆藏标准参数冲煮，平衡展现产区本味。'
+
+  const isCold = coffee.recipe.waterTempC <= 15
+  const isDark = coffee.roastValue >= 4
+
+  if (tastePreset === 'sweet') {
+    doseMultiplier = 1.04
+    waterMultiplier = 0.97
+    if (!isCold) {
+      tempDelta = isDark ? -2 : 1
+    }
+    coachNote = isDark
+      ? '已将水温微降 2°C 并略收尾段水量，抑制深烘苦涩、放大焦糖回甘。'
+      : '已微提 1°C 水温并略增粉量，充分打开浅中烘果胶甜感、柔化尖酸。'
+  } else if (tastePreset === 'bright') {
+    doseMultiplier = 0.96
+    waterMultiplier = 1.06
+    if (!isCold) {
+      tempDelta = -1
+    }
+    coachNote = '已适度拉大水粉比并微降 1°C 水温，让茶感与上扬花果香更清澈透亮。'
+  } else if (tastePreset === 'bold') {
+    doseMultiplier = 1.12
+    waterMultiplier = 0.96
+    coachNote = '已增加约 12% 咖啡粉量，带来更绵密的油脂醇厚度与浓郁挂杯感。'
+  }
+
+  const waterTempC = isCold
+    ? coffee.recipe.waterTempC
+    : Math.min(96, Math.max(82, coffee.recipe.waterTempC + tempDelta))
+
   return {
-    doseGrams: Math.round(coffee.recipe.doseGrams * factor * 10) / 10,
-    waterMl: Math.round(coffee.recipe.waterMl * factor),
+    doseGrams: Math.round(coffee.recipe.doseGrams * factor * doseMultiplier * 10) / 10,
+    waterMl: Math.round(coffee.recipe.waterMl * factor * waterMultiplier),
     milkMl: coffee.recipe.milkMl ? Math.round(coffee.recipe.milkMl * factor) : undefined,
     iceGrams: coffee.recipe.iceGrams ? Math.round(coffee.recipe.iceGrams * factor) : undefined,
+    waterTempC,
+    coachNote,
     scaleTarget: (target?: number) =>
-      typeof target === 'number' ? Math.round(target * factor) : undefined,
+      typeof target === 'number'
+        ? Math.round(target * factor * (target > coffee.recipe.waterMl ? 1 : waterMultiplier))
+        : undefined,
   }
 }
 
@@ -112,46 +169,6 @@ export function formatSeconds(totalSec: number): string {
   const mins = Math.floor(clamped / 60)
   const secs = clamped % 60
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-}
-
-let audioCtx: AudioContext | null = null
-
-export function playGentleChime(type: 'step' | 'complete' = 'step') {
-  try {
-    const AudioContextClass =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    if (!AudioContextClass) return
-    if (!audioCtx) {
-      audioCtx = new AudioContextClass()
-    }
-    if (audioCtx.state === 'suspended') {
-      void audioCtx.resume()
-    }
-
-    const now = audioCtx.currentTime
-    const notes = type === 'complete' ? [523.25, 659.25, 783.99, 1046.5] : [587.33, 880]
-
-    notes.forEach((freq, idx) => {
-      if (!audioCtx) return
-      const osc = audioCtx.createOscillator()
-      const gain = audioCtx.createGain()
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(freq, now + idx * 0.14)
-
-      gain.gain.setValueAtTime(0.0001, now + idx * 0.14)
-      gain.gain.exponentialRampToValueAtTime(0.09, now + idx * 0.14 + 0.03)
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.14 + 0.55)
-
-      osc.connect(gain)
-      gain.connect(audioCtx.destination)
-
-      osc.start(now + idx * 0.14)
-      osc.stop(now + idx * 0.14 + 0.6)
-    })
-  } catch {
-    // Ignore audio errors if blocked by browser autoplay policies
-  }
 }
 
 export function computeCuratorBadges(
@@ -166,6 +183,10 @@ export function computeCuratorBadges(
   const milkOrIcedCount = records.filter((r) => {
     const item = allCoffees.find((c) => c.id === r.coffeeId)
     return item?.category === '意式奶咖' || item?.category === '冰爽特调'
+  }).length
+  const retroCount = records.filter((r) => {
+    const item = allCoffees.find((c) => c.id === r.coffeeId)
+    return item?.category === '复古器具'
   }).length
   const noteCount = records.filter((r) => r.tastingNote.trim().length >= 4).length
 
@@ -192,6 +213,13 @@ export function computeCuratorBadges(
       progress: `${Math.min(2, milkOrIcedCount)} / 2`,
     },
     {
+      id: 'retro-craftsman',
+      title: '复古器具匠人',
+      subtitle: '体验法压壶、爱乐压、摩卡壶或浓缩机',
+      unlocked: retroCount >= 2,
+      progress: `${Math.min(2, retroCount)} / 2`,
+    },
+    {
       id: 'flavor-archivist',
       title: '风味品鉴策展人',
       subtitle: '为 3 杯咖啡写下专属风味品鉴手记',
@@ -201,9 +229,9 @@ export function computeCuratorBadges(
     {
       id: 'world-collector',
       title: '风味环游收藏家',
-      subtitle: '点亮 5 款不同馆藏咖啡展品',
-      unlocked: uniqueIds.size >= 5,
-      progress: `${Math.min(5, uniqueIds.size)} / 5`,
+      subtitle: '点亮 6 款不同馆藏咖啡展品',
+      unlocked: uniqueIds.size >= 6,
+      progress: `${Math.min(6, uniqueIds.size)} / 6`,
     },
   ]
 }

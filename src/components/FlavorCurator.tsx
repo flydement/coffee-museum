@@ -1,5 +1,9 @@
-import { useMemo } from 'react'
-import { COFFEE_EXHIBITS, MOOD_FLAVOR_OPTIONS } from '../data/coffees'
+import { useMemo, useState } from 'react'
+import {
+  COFFEE_EXHIBITS,
+  CURATOR_SCENARIOS,
+  MOOD_FLAVOR_OPTIONS,
+} from '../data/coffees'
 import type {
   CoffeeExhibit,
   DrinkCategory,
@@ -7,7 +11,7 @@ import type {
   TemperatureStyle,
 } from '../types/coffee'
 import { scoreExhibitMatch } from '../utils/platform'
-import { CupEmblem } from './Icons'
+import { BookmarkHeartIcon, CupEmblem } from './Icons'
 
 interface FlavorCuratorProps {
   preference: FlavorPreference
@@ -16,6 +20,8 @@ interface FlavorCuratorProps {
   onStartBrew: (coffee: CoffeeExhibit) => void
   onOpenGallery: () => void
   archiveCount: number
+  wishlistIds: Set<string>
+  onToggleWishlist: (coffeeId: string) => void
 }
 
 const STYLE_OPTIONS: { value: 'all' | DrinkCategory; label: string }[] = [
@@ -40,7 +46,11 @@ export function FlavorCurator({
   onStartBrew,
   onOpenGallery,
   archiveCount,
+  wishlistIds,
+  onToggleWishlist,
 }: FlavorCuratorProps) {
+  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
+
   const rankedExhibits = useMemo(() => {
     return COFFEE_EXHIBITS.map((coffee) => ({
       coffee,
@@ -48,15 +58,21 @@ export function FlavorCurator({
     })).sort((a, b) => b.match - a.match)
   }, [preference])
 
+  const updatePrefManual = (next: FlavorPreference) => {
+    setActiveScenarioId(null)
+    onChangePreference(next)
+  }
+
   const toggleMood = (moodId: string) => {
     const exists = preference.selectedMoods.includes(moodId)
     const nextMoods = exists
       ? preference.selectedMoods.filter((m) => m !== moodId)
       : [...preference.selectedMoods, moodId]
-    onChangePreference({ ...preference, selectedMoods: nextMoods })
+    updatePrefManual({ ...preference, selectedMoods: nextMoods })
   }
 
   const handleReset = () => {
+    setActiveScenarioId(null)
     onChangePreference({
       style: 'all',
       temperature: 'all',
@@ -66,6 +82,11 @@ export function FlavorCurator({
       bitterness: 40,
       selectedMoods: [],
     })
+  }
+
+  const handleApplyScenario = (scenarioId: string, pref: FlavorPreference) => {
+    setActiveScenarioId(scenarioId)
+    onChangePreference(pref)
   }
 
   const handleSurprise = () => {
@@ -84,7 +105,7 @@ export function FlavorCurator({
           <p className="eyebrow">CURATED COFFEE EXHIBITION · 风味策展与冲煮工坊</p>
           <h1 className="hero-title">选一种心仪风味，亲手冲出你的馆藏咖啡</h1>
           <p className="hero-desc">
-            在这里，每一杯咖啡都是一件可被复现的风味藏品。通过下方风味调音台挑选酸度、甜感、醇厚与香调，系统会为你匹配专属豆单与器具参数，并一步步陪伴计时，带你做出理想中的那一杯。
+            在这里，每一杯咖啡都是一件可被复现的风味藏品。通过下方情境点单或风味调音台挑选酸度、甜感、醇厚与香调，系统会为你匹配专属豆单、动态定制冲煮参数，并一步步陪伴计时直至出杯。
           </p>
           <div className="hero-actions">
             <button
@@ -109,16 +130,16 @@ export function FlavorCurator({
               className="btn btn-ghost"
               onClick={onOpenGallery}
             >
-              浏览全部 10 款馆藏 →
+              浏览全部 {COFFEE_EXHIBITS.length} 款馆藏 →
             </button>
           </div>
           <div className="hero-metrics">
             <div>
-              <div className="hero-metric-val">10</div>
+              <div className="hero-metric-val">{COFFEE_EXHIBITS.length}</div>
               <div className="hero-metric-label">世界代表性馆藏风味</div>
             </div>
             <div>
-              <div className="hero-metric-val">6</div>
+              <div className="hero-metric-val">8</div>
               <div className="hero-metric-label">动态器具实时萃取引导</div>
             </div>
             <div>
@@ -137,6 +158,40 @@ export function FlavorCurator({
             <span>常设展 · 01 — 萃取器具与风味地图</span>
             <span className="mono">WEB · PC · APP</span>
           </div>
+        </div>
+      </section>
+
+      {/* One-Tap Mood Scenarios */}
+      <section aria-label="情境风味速选" style={{ marginBottom: 8 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            marginBottom: 10,
+            gap: 12,
+            flexWrap: 'wrap',
+          }}
+        >
+          <span className="eyebrow" style={{ margin: 0 }}>
+            CURATOR SCENARIOS · 按此刻心情一键调味
+          </span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--espresso-600)' }}>
+            点击任一生活情境，自动拨动下方风味滑块
+          </span>
+        </div>
+        <div className="scenario-strip">
+          {CURATOR_SCENARIOS.map((sc) => (
+            <button
+              key={sc.id}
+              type="button"
+              className={`scenario-card ${activeScenarioId === sc.id ? 'active' : ''}`}
+              onClick={() => handleApplyScenario(sc.id, sc.preference)}
+            >
+              <span className="scenario-card-title">{sc.title}</span>
+              <span className="scenario-card-sub">{sc.subtitle}</span>
+            </button>
+          ))}
         </div>
       </section>
 
@@ -170,7 +225,7 @@ export function FlavorCurator({
                   key={opt.value}
                   type="button"
                   className={`filter-pill ${preference.style === opt.value ? 'active' : ''}`}
-                  onClick={() => onChangePreference({ ...preference, style: opt.value })}
+                  onClick={() => updatePrefManual({ ...preference, style: opt.value })}
                 >
                   {opt.label}
                 </button>
@@ -189,7 +244,7 @@ export function FlavorCurator({
                   type="button"
                   className={`filter-pill ${preference.temperature === opt.value ? 'active' : ''}`}
                   onClick={() =>
-                    onChangePreference({ ...preference, temperature: opt.value })
+                    updatePrefManual({ ...preference, temperature: opt.value })
                   }
                 >
                   {opt.label}
@@ -252,7 +307,7 @@ export function FlavorCurator({
                   value={preference[axis.key]}
                   className="museum-range"
                   onChange={(e) =>
-                    onChangePreference({
+                    updatePrefManual({
                       ...preference,
                       [axis.key]: Number(e.target.value),
                     })
@@ -302,87 +357,101 @@ export function FlavorCurator({
           </div>
 
           <div className="exhibit-grid">
-            {rankedExhibits.slice(0, 6).map(({ coffee, match }) => (
-              <article key={coffee.id} className="exhibit-card">
-                <div className="exhibit-top-row">
-                  <span className="exhibit-no">
-                    {coffee.exhibitNo} · {coffee.category}
-                  </span>
-                  <span className={`match-badge ${match >= 85 ? 'high' : ''}`}>
-                    {match}% 契合
-                  </span>
-                </div>
-
-                <div className="exhibit-headline-wrap">
-                  <div className="cup-medallion">
-                    <CupEmblem
-                      method={coffee.method}
-                      liquid={coffee.palette.liquid}
-                      crema={coffee.palette.crema}
-                    />
-                  </div>
-                  <div>
-                    <h3 className="exhibit-title">{coffee.name}</h3>
-                    <p className="exhibit-en">{coffee.englishName}</p>
-                  </div>
-                </div>
-
-                <p className="exhibit-subtitle">{coffee.subtitle}</p>
-
-                <div className="pill-row">
-                  {coffee.flavorNotes.slice(0, 3).map((note) => (
-                    <span key={note} className="tag">
-                      {note}
+            {rankedExhibits.slice(0, 6).map(({ coffee, match }) => {
+              const wished = wishlistIds.has(coffee.id)
+              return (
+                <article key={coffee.id} className="exhibit-card">
+                  <div className="exhibit-top-row">
+                    <span className="exhibit-no">
+                      {coffee.exhibitNo} · {coffee.category}
                     </span>
-                  ))}
-                  <span className="tag tag-brass">{coffee.roast}</span>
-                </div>
-
-                <div className="flavor-mini-bars">
-                  {[
-                    { label: '酸度', val: coffee.flavorProfile.acidity },
-                    { label: '甜感', val: coffee.flavorProfile.sweetness },
-                    { label: '醇厚', val: coffee.flavorProfile.body },
-                  ].map((item) => (
-                    <div key={item.label} className="mini-bar-item">
-                      <div className="mini-bar-label">
-                        <span>{item.label}</span>
-                        <span className="mono">{item.val}</span>
-                      </div>
-                      <div className="mini-bar-track">
-                        <div
-                          className="mini-bar-fill"
-                          style={{ width: `${item.val}%` }}
-                        />
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className={`match-badge ${match >= 85 ? 'high' : ''}`}>
+                        {match}% 契合
+                      </span>
+                      <button
+                        type="button"
+                        className="wishlist-icon-btn"
+                        aria-label={wished ? '移出想喝清单' : '加入想喝清单'}
+                        title={wished ? '已加入想喝清单' : '加入想喝清单'}
+                        onClick={() => onToggleWishlist(coffee.id)}
+                      >
+                        <BookmarkHeartIcon saved={wished} size={15} />
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  </div>
 
-                <div className="exhibit-spec-strip">
-                  <span>器具：{coffee.methodLabel}</span>
-                  <span>水温：{coffee.recipe.waterTempC}°C</span>
-                  <span>耗时：{coffee.recipe.totalTimeLabel}</span>
-                </div>
+                  <div className="exhibit-headline-wrap">
+                    <div className="cup-medallion">
+                      <CupEmblem
+                        method={coffee.method}
+                        liquid={coffee.palette.liquid}
+                        crema={coffee.palette.crema}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="exhibit-title">{coffee.name}</h3>
+                      <p className="exhibit-en">{coffee.englishName}</p>
+                    </div>
+                  </div>
 
-                <div className="exhibit-actions">
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-sm"
-                    onClick={() => onSelectInspect(coffee)}
-                  >
-                    馆藏参数
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    onClick={() => onStartBrew(coffee)}
-                  >
-                    开始制作
-                  </button>
-                </div>
-              </article>
-            ))}
+                  <p className="exhibit-subtitle">{coffee.subtitle}</p>
+
+                  <div className="pill-row">
+                    {coffee.flavorNotes.slice(0, 3).map((note) => (
+                      <span key={note} className="tag">
+                        {note}
+                      </span>
+                    ))}
+                    <span className="tag tag-brass">{coffee.roast}</span>
+                  </div>
+
+                  <div className="flavor-mini-bars">
+                    {[
+                      { label: '酸度', val: coffee.flavorProfile.acidity },
+                      { label: '甜感', val: coffee.flavorProfile.sweetness },
+                      { label: '醇厚', val: coffee.flavorProfile.body },
+                    ].map((item) => (
+                      <div key={item.label} className="mini-bar-item">
+                        <div className="mini-bar-label">
+                          <span>{item.label}</span>
+                          <span className="mono">{item.val}</span>
+                        </div>
+                        <div className="mini-bar-track">
+                          <div
+                            className="mini-bar-fill"
+                            style={{ width: `${item.val}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="exhibit-spec-strip">
+                    <span>器具：{coffee.methodLabel}</span>
+                    <span>水温：{coffee.recipe.waterTempC}°C</span>
+                    <span>耗时：{coffee.recipe.totalTimeLabel}</span>
+                  </div>
+
+                  <div className="exhibit-actions">
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => onSelectInspect(coffee)}
+                    >
+                      馆藏参数
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => onStartBrew(coffee)}
+                    >
+                      开始制作
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         </div>
       </section>
