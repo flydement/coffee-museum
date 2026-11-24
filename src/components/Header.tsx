@@ -1,5 +1,4 @@
 import type { AppView, MuseumTheme } from '../types/coffee'
-import { detectRuntimePlatform } from '../utils/platform'
 import {
   AmbienceIcon,
   ArchiveIcon,
@@ -40,8 +39,6 @@ export function Header({
   ambienceOn,
   onToggleAmbience,
 }: HeaderProps) {
-  const platform = detectRuntimePlatform()
-
   const renderIcon = (id: AppView) => {
     switch (id) {
       case 'curator':
@@ -101,33 +98,30 @@ export function Header({
             <button
               id="header-ambience-btn"
               type="button"
-              className={`icon-pill-btn ${ambienceOn ? 'active' : ''}`}
+              className={`icon-pill-btn header-action-btn ${ambienceOn ? 'active' : ''}`}
               onClick={onToggleAmbience}
-              title="开启/关闭雨夜吃茶馆环境白噪音"
+              aria-pressed={ambienceOn}
+              title={ambienceOn ? '点击关闭雨夜吃茶馆白噪音' : '点击开启雨夜吃茶馆环境白噪音'}
             >
               <AmbienceIcon active={ambienceOn} size={16} />
-              <span className="hide-mobile-label">
-                {ambienceOn ? '雨夜声景中' : '馆内声景'}
+              <span className="header-action-label">
+                {ambienceOn ? '雨夜声景' : '馆内声景'}
               </span>
             </button>
 
             <button
               id="header-theme-btn"
               type="button"
-              className={`icon-pill-btn ${theme === 'kissaten' ? 'active' : ''}`}
+              className={`icon-pill-btn header-action-btn ${theme === 'kissaten' ? 'active' : ''}`}
               onClick={onToggleTheme}
+              aria-pressed={theme === 'kissaten'}
               title={theme === 'kissaten' ? '切换至日间暖白展厅' : '切换至深夜吃茶馆暖暗模式'}
             >
               <ThemeLampIcon dark={theme === 'kissaten'} size={16} />
-              <span className="hide-mobile-label">
+              <span className="header-action-label">
                 {theme === 'kissaten' ? '日间展馆' : '深夜吃茶'}
               </span>
             </button>
-
-            <div className="platform-chip" title={platform.hint}>
-              <span className="platform-dot" />
-              <span>{platform.label}</span>
-            </div>
           </div>
         </div>
       </header>

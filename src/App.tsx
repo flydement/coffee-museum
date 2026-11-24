@@ -15,6 +15,7 @@ import type {
   TasteCustomizePreset,
 } from './types/coffee'
 import { setCafeAmbience } from './utils/platform'
+import { APP_VERSION } from './utils/version'
 
 const ARCHIVE_STORAGE_KEY = 'atelier_coffee_museum_archive_v1'
 const WISHLIST_STORAGE_KEY = 'atelier_coffee_museum_wishlist_v1'
@@ -274,7 +275,7 @@ export default function App() {
 
       <footer className="museum-footer">
         <div className="museum-footer-inner">
-          <span>拾光咖啡博物馆 · Atelier Café Museum v4.0</span>
+          <span>拾光咖啡博物馆 · Atelier Café Museum {APP_VERSION}</span>
           <span>一套代码跨端架构：Web / PWA · PC (Electron) · Mobile (Capacitor)</span>
         </div>
       </footer>
