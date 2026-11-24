@@ -563,21 +563,168 @@ body::before {
   box-shadow: var(--shadow-card);
 }
 
-.hero-artwork-frame img {
+.hero-carousel-viewport {
+  position: relative;
   width: 100%;
   aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #f5ede0;
+}
+
+.hero-carousel-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+}
+
+.hero-carousel-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-carousel-slide img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  user-select: none;
+}
+
+.hero-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border-brass);
+  background: rgba(252, 249, 243, 0.86);
+  color: #2e1f17;
+  font-size: 1.35rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+  box-shadow: 0 4px 12px rgba(34, 22, 16, 0.16);
+}
+
+.hero-carousel-arrow.prev {
+  left: 12px;
+}
+
+.hero-carousel-arrow.next {
+  right: 12px;
+}
+
+.hero-artwork-frame:hover .hero-carousel-arrow,
+.hero-artwork-frame:focus-within .hero-carousel-arrow {
+  opacity: 1;
+}
+
+.hero-carousel-arrow:hover {
+  background: #fcf9f3;
+  transform: translateY(-50%) scale(1.06);
+}
+
+.hero-carousel-counter {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(34, 22, 16, 0.72);
+  color: #f6f1e7;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .hero-artwork-caption {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   padding: 10px 16px;
   background: var(--caption-bg);
   border-top: 1px solid var(--border-subtle);
   font-size: 0.78rem;
   color: var(--espresso-600);
+}
+
+.hero-caption-title {
+  font-weight: 500;
+  color: var(--espresso-800);
+  animation: viewEnter 0.3s ease both;
+}
+
+.hero-carousel-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.hero-carousel-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hero-dot-btn {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--paper-warm);
+  overflow: hidden;
+  transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s ease;
+}
+
+.hero-dot-btn:hover {
+  background: var(--brass-500);
+}
+
+.hero-dot-btn.active {
+  width: 24px;
+  background: rgba(174, 118, 58, 0.28);
+}
+
+.hero-dot-btn.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--brass-600);
+  transform-origin: left center;
+  animation: heroDotFill 4.5s linear forwards;
+}
+
+.hero-dot-btn.active.paused::after {
+  animation-play-state: paused;
+}
+
+.hero-caption-badge {
+  font-size: 0.7rem;
+  color: var(--brass-700);
+}
+
+@keyframes heroDotFill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (hover: none) {
+  .hero-carousel-arrow {
+    opacity: 0.85;
+  }
 }
 
 /* ==================== Flavor Curator Console ==================== */
@@ -2172,7 +2319,8 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
 
   .desktop-nav,
   .platform-chip,
-  .hide-mobile-label {
+  .hide-mobile-label,
+  .hero-caption-badge {
     display: none;
   }
 

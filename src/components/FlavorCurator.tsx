@@ -40,6 +40,32 @@ const TEMP_OPTIONS: { value: 'all' | TemperatureStyle; label: string }[] = [
   { value: '冷热分层', label: '冷热分层' },
 ]
 
+const HERO_EXHIBITION_SLIDES = [
+  {
+    id: 'pour-over',
+    src: './images/coffee-museum-hero.jpg',
+    caption: '常设展 · 01 — 萃取器具与风味地图',
+    badge: 'V60 · LATTE',
+    alt: '拾光咖啡博物馆常设展 01：手冲铜壶、玻璃滤杯、拉花陶瓷杯与咖啡果枝',
+  },
+  {
+    id: 'espresso-moka',
+    src: './images/exhibition-espresso-moka.jpg',
+    caption: '常设展 · 02 — 意式浓缩与复古摩卡馆',
+    badge: '9 BAR · MOKA',
+    alt: '拾光咖啡博物馆常设展 02：八角复古摩卡壶、双流意式浓缩手柄与咖啡樱桃枝',
+  },
+  {
+    id: 'coldbrew-iced',
+    src: './images/exhibition-coldbrew-iced.jpg',
+    caption: '常设展 · 03 — 京都冰滴与柑橘特调馆',
+    badge: 'COLD DRIP · CITRUS',
+    alt: '拾光咖啡博物馆常设展 03：京都慢萃冰滴塔、球冰冷萃与鲜橙迷迭香特调',
+  },
+] as const
+
+const HERO_SLIDE_INTERVAL_MS = 4500
+
 export function FlavorCurator({
   preference,
   onChangePreference,
@@ -55,6 +81,51 @@ export function FlavorCurator({
   const [isDrawing, setIsDrawing] = useState(false)
   const [drawnCoffee, setDrawnCoffee] = useState<CoffeeExhibit>(COFFEE_EXHIBITS[0])
   const drawTimerRef = useRef<number | null>(null)
+
+  // Seamless infinite hero artwork carousel state
+  const [slideTrackIdx, setSlideTrackIdx] = useState(0)
+  const [slideAnimate, setSlideAnimate] = useState(true)
+  const [carouselPaused, setCarouselPaused] = useState(false)
+  const touchStartXRef = useRef<number | null>(null)
+
+  const slideCount = HERO_EXHIBITION_SLIDES.length
+  const activeSlideIdx = slideTrackIdx % slideCount
+  const activeSlide = HERO_EXHIBITION_SLIDES[activeSlideIdx]
+  const carouselTrackSlides = useMemo(
+    () => [...HERO_EXHIBITION_SLIDES, HERO_EXHIBITION_SLIDES[0]],
+    []
+  )
+
+  useEffect(() => {
+    if (carouselPaused) return
+    const timer = window.setInterval(() => {
+      setSlideAnimate(true)
+      setSlideTrackIdx((prev) => (prev >= slideCount ? 1 : prev + 1))
+    }, HERO_SLIDE_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+  }, [carouselPaused, slideCount])
+
+  const handleSlideTransitionEnd = () => {
+    if (slideTrackIdx === slideCount) {
+      setSlideAnimate(false)
+      setSlideTrackIdx(0)
+    }
+  }
+
+  const handleStepSlide = (delta: 1 | -1) => {
+    if (slideTrackIdx >= slideCount) return
+    setSlideAnimate(true)
+    setSlideTrackIdx((prev) => {
+      const normalized = prev % slideCount
+      if (delta === 1) return normalized + 1
+      return normalized === 0 ? slideCount - 1 : normalized - 1
+    })
+  }
+
+  const handleJumpSlide = (targetIndex: number) => {
+    setSlideAnimate(true)
+    setSlideTrackIdx(targetIndex)
+  }
 
   const dailyCoffee = useMemo(
     () => COFFEE_EXHIBITS[getDailyFeaturedIndex(COFFEE_EXHIBITS.length)],
@@ -214,14 +285,99 @@ export function FlavorCurator({
           </div>
         </div>
 
-        <div className="hero-artwork-frame">
-          <img
-            src="./images/coffee-museum-hero.jpg"
-            alt="拾光咖啡博物馆复古手绘主视觉：手冲铜壶、玻璃滤杯、拉花陶瓷杯与咖啡果枝"
-          />
+        <div
+          className="hero-artwork-frame"
+          onMouseEnter={() => setCarouselPaused(true)}
+          onMouseLeave={() => setCarouselPaused(false)}
+          onFocus={() => setCarouselPaused(true)}
+          onBlur={() => setCarouselPaused(false)}
+          onTouchStart={(e) => {
+            touchStartXRef.current = e.touches[0]?.clientX ?? null
+            setCarouselPaused(true)
+          }}
+          onTouchEnd={(e) => {
+            const startX = touchStartXRef.current
+            const endX = e.changedTouches[0]?.clientX ?? null
+            if (startX !== null && endX !== null) {
+              const diff = startX - endX
+              if (Math.abs(diff) > 36) {
+                handleStepSlide(diff > 0 ? 1 : -1)
+              }
+            }
+            touchStartXRef.current = null
+            setCarouselPaused(false)
+          }}
+          aria-roledescription="carousel"
+          aria-label="拾光咖啡博物馆常设展轮播插画"
+        >
+          <div className="hero-carousel-viewport">
+            <div
+              className="hero-carousel-track"
+              style={{
+                transform: `translate3d(-${slideTrackIdx * 100}%, 0, 0)`,
+                transition: slideAnimate
+                  ? 'transform 0.72s cubic-bezier(0.22, 1, 0.36, 1)'
+                  : 'none',
+              }}
+              onTransitionEnd={handleSlideTransitionEnd}
+            >
+              {carouselTrackSlides.map((slide, idx) => (
+                <div key={`${slide.id}-${idx}`} className="hero-carousel-slide">
+                  <img
+                    src={slide.src}
+                    alt={slide.alt}
+                    loading={idx === 0 ? 'eager' : 'lazy'}
+                    draggable={false}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="hero-carousel-arrow prev"
+              aria-label="上一张常设展插画"
+              onClick={() => handleStepSlide(-1)}
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              className="hero-carousel-arrow next"
+              aria-label="下一张常设展插画"
+              onClick={() => handleStepSlide(1)}
+            >
+              ›
+            </button>
+
+            <span className="hero-carousel-counter mono" aria-hidden="true">
+              {String(activeSlideIdx + 1).padStart(2, '0')} /{' '}
+              {String(slideCount).padStart(2, '0')}
+            </span>
+          </div>
+
           <div className="hero-artwork-caption">
-            <span>常设展 · 01 — 萃取器具与风味地图</span>
-            <span className="mono">WEB · PC · APP</span>
+            <span key={activeSlide.id} className="hero-caption-title">
+              {activeSlide.caption}
+            </span>
+            <div className="hero-carousel-controls">
+              <div className="hero-carousel-dots" role="tablist" aria-label="切换常设展插画">
+                {HERO_EXHIBITION_SLIDES.map((slide, idx) => (
+                  <button
+                    key={slide.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeSlideIdx === idx}
+                    aria-label={slide.caption}
+                    className={`hero-dot-btn ${activeSlideIdx === idx ? 'active' : ''} ${
+                      carouselPaused ? 'paused' : ''
+                    }`}
+                    onClick={() => handleJumpSlide(idx)}
+                  />
+                ))}
+              </div>
+              <span className="mono hero-caption-badge">{activeSlide.badge}</span>
+            </div>
           </div>
         </div>
       </section>
