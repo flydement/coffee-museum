@@ -1,5 +1,6 @@
 export type BrewMethod =
   | 'v60'
+  | 'chemex'
   | 'espresso'
   | 'milk'
   | 'dirty'
@@ -130,7 +131,7 @@ export interface SavedBrewRecord {
   palette: CoffeeExhibit['palette']
 }
 
-export type AppView = 'curator' | 'gallery' | 'studio' | 'archive'
+export type AppView = 'curator' | 'gallery' | 'studio' | 'atlas' | 'archive'
 
 export interface CuratorBadge {
   id: string

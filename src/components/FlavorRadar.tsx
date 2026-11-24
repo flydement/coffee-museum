@@ -86,14 +86,26 @@ export function FlavorRadar({
             />
             <text
               x={labelPt.x}
-              y={labelPt.y}
+              y={labelPt.y - 5}
               textAnchor="middle"
               dominantBaseline="middle"
               fill="currentColor"
-              fontSize="11.5"
+              fontSize="11"
               fontWeight="600"
             >
               {axis.label}
+            </text>
+            <text
+              x={labelPt.x}
+              y={labelPt.y + 8}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="var(--brass-700)"
+              fontSize="9.5"
+              fontFamily="var(--font-mono)"
+              fontWeight="600"
+            >
+              {profile[axis.key]}
             </text>
           </g>
         )
@@ -107,6 +119,7 @@ export function FlavorRadar({
           strokeWidth="2"
           strokeDasharray="4 2"
           strokeLinejoin="round"
+          style={{ transition: 'all 0.35s cubic-bezier(0.22, 1, 0.36, 1)' }}
         />
       )}
 
@@ -116,6 +129,7 @@ export function FlavorRadar({
         stroke="#C28643"
         strokeWidth="2.2"
         strokeLinejoin="round"
+        style={{ transition: 'all 0.35s cubic-bezier(0.22, 1, 0.36, 1)' }}
       />
 
       {AXES.map((axis, i) => {
@@ -125,11 +139,14 @@ export function FlavorRadar({
             key={axis.key}
             cx={pt.x}
             cy={pt.y}
-            r="3.8"
+            r="4"
             fill="#C28643"
             stroke="var(--paper-surface)"
             strokeWidth="1.5"
-          />
+            style={{ transition: 'all 0.35s cubic-bezier(0.22, 1, 0.36, 1)' }}
+          >
+            <title>{`${axis.label}: ${profile[axis.key]}`}</title>
+          </circle>
         )
       })}
     </svg>

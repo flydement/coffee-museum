@@ -86,6 +86,16 @@ export function ArchiveIcon({ size = 18 }: IconProps) {
   )
 }
 
+export function AtlasIcon({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.7" />
+      <ellipse cx="12" cy="12" rx="4.2" ry="8.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M3.8 9.2H20.2M3.8 14.8H20.2" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  )
+}
+
 export function SoundIcon({ muted, size = 18 }: { muted: boolean; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -186,6 +196,17 @@ export function CupEmblem({
         <path d="M14 21H26L29 32C29 33.7 27.7 35 26 35H14C12.3 35 11 33.7 11 32L14 21Z" stroke="#3E2A20" strokeWidth="1.8" fill="#FCF9F3" />
         <path d="M12.5 28H27.5L28.4 32C28.4 33.2 27.3 34 26 34H14C12.7 34 11.6 33.2 11.6 32L12.5 28Z" fill={liquid} />
         <line x1="20" y1="20" x2="20" y2="28" stroke={crema} strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  if (method === 'chemex') {
+    return (
+      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <path d="M11 7H29L23.5 18L29.5 32.5C29.8 33.8 28.8 35 27.4 35H12.6C11.2 35 10.2 33.8 10.5 32.5L16.5 18L11 7Z" fill="#FCF9F3" stroke="#3E2A20" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M13.5 26H26.5L28.8 32.5C29 33.5 28.2 34.2 27.2 34.2H12.8C11.8 34.2 11 33.5 11.2 32.5L13.5 26Z" fill={liquid} />
+        <rect x="15" y="16" width="10" height="5.5" rx="1.5" fill="#B57A42" stroke="#3E2A20" strokeWidth="1.4" />
+        <circle cx="20" cy="18.8" r="1.4" fill="#3E2A20" />
       </svg>
     )
   }

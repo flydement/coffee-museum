@@ -17,6 +17,7 @@ import { FlavorRadar } from './FlavorRadar'
 
 interface TastingArchiveProps {
   records: SavedBrewRecord[]
+  bestQuizScore: number
   onDeleteRecord: (recordId: string) => void
   onImportRecords: (records: SavedBrewRecord[]) => void
   onRebrew: (
@@ -29,6 +30,7 @@ interface TastingArchiveProps {
 
 export function TastingArchive({
   records,
+  bestQuizScore,
   onDeleteRecord,
   onImportRecords,
   onRebrew,
@@ -39,7 +41,7 @@ export function TastingArchive({
   const [backupNotice, setBackupNotice] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  const badges = computeCuratorBadges(records, COFFEE_EXHIBITS)
+  const badges = computeCuratorBadges(records, COFFEE_EXHIBITS, bestQuizScore)
   const uniqueCount = new Set(records.map((r) => r.coffeeId)).size
   const avgRating =
     records.length > 0
@@ -122,7 +124,7 @@ export function TastingArchive({
   }
 
   return (
-    <div>
+    <div className="view-enter">
       <div className="results-header" style={{ marginBottom: 24 }}>
         <div>
           <p className="eyebrow">PERSONAL TASTING ARCHIVE · 个人馆藏陈列室</p>

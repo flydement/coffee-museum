@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --paper-bg: #f6f1e7;
   --paper-surface: #fcf9f3;
   --paper-inset: #efe7d8;
@@ -53,6 +54,7 @@
 }
 
 [data-theme='kissaten'] {
+  color-scheme: dark;
   --paper-bg: #18110d;
   --paper-surface: #221813;
   --paper-inset: #2c1f18;
@@ -135,6 +137,15 @@ select {
 
 button {
   cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid var(--brass-500);
+  outline-offset: 2px;
 }
 
 /* Subtle archival grain overlay */
@@ -742,13 +753,40 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   flex-direction: column;
   gap: 14px;
   box-shadow: var(--shadow-soft);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.24s ease, border-color 0.24s ease;
   position: relative;
+  overflow: hidden;
+}
+
+.exhibit-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--card-liquid, var(--brass-700)) 0%,
+    var(--card-accent, var(--brass-500)) 65%,
+    transparent 100%
+  );
+  opacity: 0.72;
+  transition: opacity 0.24s ease;
 }
 
 .exhibit-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   box-shadow: var(--shadow-card);
+  border-color: var(--border-brass);
+}
+
+.exhibit-card:hover::before {
+  opacity: 1;
+}
+
+.exhibit-card:hover .cup-medallion {
+  transform: scale(1.06);
   border-color: var(--border-brass);
 }
 
@@ -797,6 +835,7 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.24s ease;
 }
 
 .exhibit-title {
@@ -916,11 +955,13 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   inset: 0;
   z-index: 80;
   background: rgba(26, 17, 12, 0.52);
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: grid;
   place-items: center;
   padding: 20px;
   overflow-y: auto;
+  animation: modalFadeIn 0.2s ease-out both;
 }
 
 .specimen-modal {
@@ -934,6 +975,7 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   box-shadow: var(--shadow-float);
   padding: 30px;
   position: relative;
+  animation: modalPop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .modal-close {
@@ -1366,7 +1408,7 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
 
 .badges-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 14px;
   margin-bottom: 32px;
 }
@@ -1405,7 +1447,7 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
 /* ==================== v2.0 Curatorial Interactive Modules ==================== */
 .scenario-strip {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 28px;
 }
@@ -1671,6 +1713,393 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   animation: bloomPulse 1.8s ease-in-out infinite;
 }
 
+/* ==================== v4.0 Fluid Motion, Blind-Box & World Atlas ==================== */
+@keyframes viewEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pinRipple {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+@keyframes confettiBurst {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.7) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(1.15) rotate(180deg);
+  }
+}
+
+.view-enter {
+  animation: viewEnter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.daily-featured-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--border-brass);
+  margin-bottom: 20px;
+}
+
+.daily-featured-name {
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--espresso-950);
+}
+
+.roast-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.roast-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--paper-warm);
+  border: 1px solid var(--border-subtle);
+}
+
+.roast-dot.filled {
+  background: var(--brass-600);
+  border-color: var(--brass-700);
+}
+
+.specimen-extra-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-subtle);
+  font-size: 0.82rem;
+  color: var(--brass-700);
+  font-weight: 500;
+}
+
+.blindbox-modal {
+  max-width: 540px;
+  text-align: center;
+}
+
+.blindbox-card {
+  background: var(--paper-bg);
+  border: 1px solid var(--border-brass);
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.blindbox-card.shuffling {
+  transform: scale(0.985);
+  opacity: 0.86;
+}
+
+.blindbox-medallion {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: var(--paper-surface);
+  border: 1px solid var(--border-brass);
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-soft);
+}
+
+.blindbox-fortune {
+  margin: 4px 0 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(199, 147, 85, 0.12);
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  color: var(--espresso-900);
+  line-height: 1.6;
+}
+
+.ceremony-celebrate {
+  position: relative;
+  overflow: hidden;
+}
+
+.ceremony-confetti {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  pointer-events: none;
+}
+
+.ceremony-confetti span {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--brass-500);
+  animation: confettiBurst 1.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ceremony-confetti span:nth-child(1) { --dx: -120px; --dy: -40px; background: #c79355; }
+.ceremony-confetti span:nth-child(2) { --dx: -70px; --dy: -75px; background: #4f6753; }
+.ceremony-confetti span:nth-child(3) { --dx: -20px; --dy: -90px; background: #d8a260; }
+.ceremony-confetti span:nth-child(4) { --dx: 35px; --dy: -85px; background: #b34d34; }
+.ceremony-confetti span:nth-child(5) { --dx: 90px; --dy: -65px; background: #c79355; }
+.ceremony-confetti span:nth-child(6) { --dx: 135px; --dy: -30px; background: #4f6753; }
+.ceremony-confetti span:nth-child(7) { --dx: -95px; --dy: 20px; background: #e6c086; }
+.ceremony-confetti span:nth-child(8) { --dx: 105px; --dy: 25px; background: #c79355; }
+
+/* World Coffee Atlas */
+.atlas-map-layout {
+  display: grid;
+  grid-template-columns: 1.35fr 0.85fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.atlas-map-card,
+.atlas-dossier-card,
+.atlas-craft-card,
+.quiz-stage-card {
+  background: var(--paper-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  box-shadow: var(--shadow-soft);
+}
+
+.atlas-map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.atlas-svg-wrap {
+  background: var(--stage-radial);
+  border: 1px solid var(--border-brass);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  overflow: hidden;
+}
+
+.atlas-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.atlas-pin {
+  cursor: pointer;
+}
+
+.atlas-pin circle {
+  transition: r 0.2s ease, fill 0.2s ease;
+}
+
+.atlas-pin-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pinRipple 1.8s ease-out infinite;
+}
+
+.atlas-mini-exhibit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--border-subtle);
+}
+
+.roast-spectrum-bar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 20px;
+}
+
+.roast-node-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--paper-bg);
+  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.roast-node-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-brass);
+}
+
+.roast-node-btn.active {
+  border-color: var(--brass-600);
+  background: rgba(199, 147, 85, 0.14);
+}
+
+.roast-bean-swatch {
+  width: 28px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--paper-surface);
+  box-shadow: 0 2px 6px rgba(34, 22, 16, 0.22);
+  position: relative;
+}
+
+.roast-detail-box {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 22px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: var(--paper-bg);
+  border: 1px solid var(--border-subtle);
+}
+
+.quiz-stage-card {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 30px;
+}
+
+.quiz-options-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.quiz-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--paper-bg);
+  font-size: 0.94rem;
+  color: var(--espresso-900);
+  transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.quiz-option-btn:hover:not(:disabled) {
+  transform: translateX(3px);
+  border-color: var(--brass-600);
+  background: var(--paper-surface);
+}
+
+.quiz-option-btn.correct {
+  border-color: var(--sage-600);
+  background: var(--sage-100);
+  color: var(--sage-600);
+  font-weight: 600;
+}
+
+.quiz-option-btn.wrong {
+  border-color: var(--cherry-600);
+  background: var(--cherry-100);
+  color: var(--cherry-600);
+}
+
+.quiz-option-letter {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--paper-surface);
+  border: 1px solid var(--border-subtle);
+  display: grid;
+  place-items: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.quiz-explanation-box {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  background: rgba(199, 147, 85, 0.12);
+  border: 1px solid var(--border-brass);
+  animation: viewEnter 0.25s ease both;
+}
+
+.quiz-score-ring {
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  margin: 12px auto 0;
+  display: grid;
+  place-items: center;
+  background: var(--badge-unlocked-bg);
+  border: 3px solid var(--brass-600);
+  box-shadow: var(--shadow-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* ==================== Footer ==================== */
 .museum-footer {
   border-top: 1px solid var(--border-subtle);
@@ -1699,7 +2128,9 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   .curator-layout,
   .studio-grid,
   .ceremony-card,
-  .specimen-grid {
+  .specimen-grid,
+  .atlas-map-layout,
+  .roast-detail-box {
     grid-template-columns: 1fr;
   }
 
@@ -1712,7 +2143,12 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .scenario-strip {
+  .scenario-strip,
+  .badges-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .roast-spectrum-bar {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -1742,7 +2178,7 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
 
   .mobile-dock {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     position: fixed;
     left: 0;
     right: 0;
@@ -1785,7 +2221,8 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   }
 
   .archive-stats-row,
-  .taste-preset-grid {
+  .taste-preset-grid,
+  .roast-spectrum-bar {
     grid-template-columns: repeat(2, 1fr);
   }
 

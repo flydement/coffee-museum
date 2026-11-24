@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useState } from 'react'
+import { EXHIBIT_EXTRAS } from '../data/atlas'
 import { COFFEE_EXHIBITS } from '../data/coffees'
 import type {
   CoffeeExhibit,
@@ -133,7 +134,7 @@ export function MuseumGallery({
   )
 
   return (
-    <div>
+    <div className="view-enter">
       <div className="results-header" style={{ marginBottom: 22 }}>
         <div>
           <p className="eyebrow">PERMANENT COLLECTION · 永久馆藏名录</p>
@@ -251,7 +252,16 @@ export function MuseumGallery({
           const inCompare = compareIds.includes(coffee.id)
 
           return (
-            <article key={coffee.id} className="exhibit-card">
+            <article
+              key={coffee.id}
+              className="exhibit-card"
+              style={
+                {
+                  '--card-accent': coffee.palette.accent,
+                  '--card-liquid': coffee.palette.liquid,
+                } as CSSProperties
+              }
+            >
               <div className="exhibit-top-row">
                 <span className="exhibit-no">
                   {coffee.exhibitNo} · {coffee.storyYear}
@@ -311,6 +321,15 @@ export function MuseumGallery({
               <div className="exhibit-spec-strip">
                 <span>产区：{coffee.origin.split('·')[0].trim()}</span>
                 <span>粉水比：{coffee.recipe.ratioLabel}</span>
+                <span className="roast-dots" title={`烘焙度：${coffee.roast} (${coffee.roastValue}/5)`}>
+                  烘焙
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <span
+                      key={i}
+                      className={`roast-dot ${i < coffee.roastValue ? 'filled' : ''}`}
+                    />
+                  ))}
+                </span>
               </div>
 
               <div className="exhibit-actions">
@@ -589,6 +608,7 @@ function SpecimenModal({
   ) => void
 }) {
   const scaled = scaleRecipe(coffee, servings, tastePreset)
+  const extra = EXHIBIT_EXTRAS[coffee.id]
 
   return (
     <div
@@ -624,6 +644,12 @@ function SpecimenModal({
         <div className="specimen-curator-box">
           <strong>策展手记：</strong>
           {coffee.curatorNote}
+          {extra && (
+            <div className="specimen-extra-meta">
+              <span>🍰 推荐甜点搭档：{extra.pairing}</span>
+              <span>🌡 最佳赏味期：{extra.tastingWindow}</span>
+            </div>
+          )}
         </div>
 
         <div className="specimen-grid">

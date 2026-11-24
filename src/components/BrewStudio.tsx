@@ -281,7 +281,7 @@ export function BrewStudio({
   }, [isComplete, postcardTheme, previewRecord])
 
   return (
-    <div>
+    <div className="view-enter">
       {/* Studio Top Bar */}
       <div className="studio-topbar">
         <div>
@@ -393,7 +393,17 @@ export function BrewStudio({
 
       {/* Completion Ceremony View */}
       {isComplete ? (
-        <section className="ceremony-card" aria-label="冲煮完成出杯仪式">
+        <section className="ceremony-card ceremony-celebrate" aria-label="冲煮完成出杯仪式">
+          <div className="ceremony-confetti" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
           <div style={{ textAlign: 'center' }}>
             <p className="eyebrow">MUSEUM POSTCARD PREVIEW · 实时纪念卡预览</p>
             {postcardPreviewUrl ? (

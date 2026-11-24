@@ -173,7 +173,8 @@ export function formatSeconds(totalSec: number): string {
 
 export function computeCuratorBadges(
   records: SavedBrewRecord[],
-  allCoffees: CoffeeExhibit[]
+  allCoffees: CoffeeExhibit[],
+  bestQuizScore = 0
 ): CuratorBadge[] {
   const uniqueIds = new Set(records.map((r) => r.coffeeId))
   const pourOverCount = records.filter((r) => {
@@ -239,6 +240,13 @@ export function computeCuratorBadges(
       subtitle: '点亮 10 款不同世界馆藏风味展品',
       unlocked: uniqueIds.size >= 10,
       progress: `${Math.min(10, uniqueIds.size)} / 10`,
+    },
+    {
+      id: 'sommelier-scholar',
+      title: '咖啡博物学者',
+      subtitle: '在「风味博物」趣味问答单轮答对 4 题以上',
+      unlocked: bestQuizScore >= 4,
+      progress: `${Math.min(4, bestQuizScore)} / 4`,
     },
   ]
 }

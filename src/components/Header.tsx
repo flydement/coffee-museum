@@ -3,6 +3,7 @@ import { detectRuntimePlatform } from '../utils/platform'
 import {
   AmbienceIcon,
   ArchiveIcon,
+  AtlasIcon,
   CompassIcon,
   GalleryIcon,
   KettleIcon,
@@ -25,6 +26,7 @@ const NAV_ITEMS: { id: AppView; label: string; shortLabel: string }[] = [
   { id: 'curator', label: '风味策展台', shortLabel: '选口味' },
   { id: 'gallery', label: '馆藏展厅', shortLabel: '展厅' },
   { id: 'studio', label: '冲煮工坊', shortLabel: '冲煮' },
+  { id: 'atlas', label: '风味博物', shortLabel: '博物' },
   { id: 'archive', label: '我的馆藏', shortLabel: '馆藏' },
 ]
 
@@ -48,6 +50,8 @@ export function Header({
         return <GalleryIcon size={18} />
       case 'studio':
         return <KettleIcon size={18} />
+      case 'atlas':
+        return <AtlasIcon size={18} />
       case 'archive':
         return <ArchiveIcon size={18} />
     }

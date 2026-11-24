@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { EXHIBIT_EXTRAS, getDailyFeaturedIndex } from '../data/atlas'
 import {
   COFFEE_EXHIBITS,
   CURATOR_SCENARIOS,
@@ -10,7 +11,7 @@ import type {
   FlavorPreference,
   TemperatureStyle,
 } from '../types/coffee'
-import { scoreExhibitMatch } from '../utils/platform'
+import { playGentleChime, scoreExhibitMatch } from '../utils/platform'
 import { BookmarkHeartIcon, CupEmblem } from './Icons'
 
 interface FlavorCuratorProps {
@@ -50,6 +51,30 @@ export function FlavorCurator({
   onToggleWishlist,
 }: FlavorCuratorProps) {
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
+  const [blindBoxOpen, setBlindBoxOpen] = useState(false)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [drawnCoffee, setDrawnCoffee] = useState<CoffeeExhibit>(COFFEE_EXHIBITS[0])
+  const drawTimerRef = useRef<number | null>(null)
+
+  const dailyCoffee = useMemo(
+    () => COFFEE_EXHIBITS[getDailyFeaturedIndex(COFFEE_EXHIBITS.length)],
+    []
+  )
+
+  useEffect(() => {
+    return () => {
+      if (drawTimerRef.current) window.clearTimeout(drawTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!blindBoxOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setBlindBoxOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [blindBoxOpen])
 
   const rankedExhibits = useMemo(() => {
     return COFFEE_EXHIBITS.map((coffee) => ({
@@ -87,18 +112,42 @@ export function FlavorCurator({
   const handleApplyScenario = (scenarioId: string, pref: FlavorPreference) => {
     setActiveScenarioId(scenarioId)
     onChangePreference(pref)
+    playGentleChime('tick')
   }
 
-  const handleSurprise = () => {
-    const randomCoffee =
+  const startBlindBoxDraw = () => {
+    if (drawTimerRef.current) window.clearTimeout(drawTimerRef.current)
+    setBlindBoxOpen(true)
+    setIsDrawing(true)
+
+    const target =
       COFFEE_EXHIBITS[Math.floor(Math.random() * COFFEE_EXHIBITS.length)]
-    onStartBrew(randomCoffee)
+    const totalTicks = 9
+    let step = 0
+
+    const spin = () => {
+      step += 1
+      if (step >= totalTicks) {
+        setDrawnCoffee(target)
+        setIsDrawing(false)
+        playGentleChime('step')
+        return
+      }
+      const preview =
+        COFFEE_EXHIBITS[Math.floor(Math.random() * COFFEE_EXHIBITS.length)]
+      setDrawnCoffee(preview)
+      playGentleChime('tick')
+      drawTimerRef.current = window.setTimeout(spin, 65 + step * 18)
+    }
+
+    spin()
   }
 
   const topMatch = rankedExhibits[0]
+  const drawnExtra = EXHIBIT_EXTRAS[drawnCoffee.id]
 
   return (
-    <div>
+    <div className="view-enter">
       {/* Editorial Museum Hero */}
       <section className="hero-exhibition" aria-label="咖啡博物馆导览">
         <div className="hero-copy">
@@ -120,9 +169,9 @@ export function FlavorCurator({
               id="hero-surprise-btn"
               type="button"
               className="btn btn-outline btn-lg"
-              onClick={handleSurprise}
+              onClick={startBlindBoxDraw}
             >
-              今日盲盒风味
+              ✦ 今日风味抽签盲盒
             </button>
             <button
               id="hero-gallery-btn"
@@ -131,6 +180,20 @@ export function FlavorCurator({
               onClick={onOpenGallery}
             >
               浏览全部 {COFFEE_EXHIBITS.length} 款馆藏 →
+            </button>
+          </div>
+          <div className="daily-featured-strip">
+            <span className="tag tag-brass mono">今日馆长精选</span>
+            <span className="daily-featured-name">
+              {dailyCoffee.exhibitNo} · {dailyCoffee.name}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ padding: '4px 10px', fontSize: '0.78rem', marginLeft: 'auto' }}
+              onClick={() => onSelectInspect(dailyCoffee)}
+            >
+              查看今日展签 →
             </button>
           </div>
           <div className="hero-metrics">
@@ -308,6 +371,9 @@ export function FlavorCurator({
                   max={100}
                   value={preference[axis.key]}
                   className="museum-range"
+                  style={{
+                    background: `linear-gradient(to right, var(--brass-600) ${preference[axis.key]}%, var(--paper-warm) ${preference[axis.key]}%)`,
+                  }}
                   onChange={(e) =>
                     updatePrefManual({
                       ...preference,
@@ -362,7 +428,16 @@ export function FlavorCurator({
             {rankedExhibits.slice(0, 6).map(({ coffee, match }) => {
               const wished = wishlistIds.has(coffee.id)
               return (
-                <article key={coffee.id} className="exhibit-card">
+                <article
+                  key={coffee.id}
+                  className="exhibit-card"
+                  style={
+                    {
+                      '--card-accent': coffee.palette.accent,
+                      '--card-liquid': coffee.palette.liquid,
+                    } as CSSProperties
+                  }
+                >
                   <div className="exhibit-top-row">
                     <span className="exhibit-no">
                       {coffee.exhibitNo} · {coffee.category}
@@ -457,6 +532,107 @@ export function FlavorCurator({
           </div>
         </div>
       </section>
+
+      {/* Playful Blind-Box Fortune Drawer Modal */}
+      {blindBoxOpen && (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="今日风味盲盒抽签"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setBlindBoxOpen(false)
+          }}
+        >
+          <div className="specimen-modal blindbox-modal">
+            <button
+              type="button"
+              className="modal-close"
+              aria-label="关闭抽签"
+              onClick={() => setBlindBoxOpen(false)}
+            >
+              ×
+            </button>
+
+            <p className="eyebrow">CURATOR BLIND BOX · 今日风味灵感签</p>
+            <h2 className="section-heading" style={{ fontSize: '1.45rem', marginBottom: 14 }}>
+              {isDrawing ? '正在为你摇动馆藏豆签…' : '为你抽中今日灵感馆藏'}
+            </h2>
+
+            <div className={`blindbox-card ${isDrawing ? 'shuffling' : 'revealed'}`}>
+              <div className="blindbox-medallion">
+                <CupEmblem
+                  method={drawnCoffee.method}
+                  liquid={drawnCoffee.palette.liquid}
+                  crema={drawnCoffee.palette.crema}
+                />
+              </div>
+              <span className="tag tag-brass mono" style={{ marginBottom: 8 }}>
+                {drawnCoffee.exhibitNo} · {drawnCoffee.category} · {drawnCoffee.roast}
+              </span>
+              <h3 className="exhibit-title" style={{ fontSize: '1.35rem' }}>
+                {drawnCoffee.name}
+              </h3>
+              <p className="exhibit-en" style={{ marginBottom: 12 }}>
+                {drawnCoffee.englishName}
+              </p>
+
+              {!isDrawing && drawnExtra && (
+                <blockquote className="blindbox-fortune">
+                  “{drawnExtra.fortune}”
+                </blockquote>
+              )}
+
+              <div className="pill-row" style={{ justifyContent: 'center', marginBottom: 12 }}>
+                {drawnCoffee.flavorNotes.map((note) => (
+                  <span key={note} className="tag">
+                    {note}
+                  </span>
+                ))}
+              </div>
+
+              {!isDrawing && drawnExtra && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--espresso-600)' }}>
+                  推荐搭档：{drawnExtra.pairing}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 18 }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                disabled={isDrawing}
+                onClick={startBlindBoxDraw}
+              >
+                ↻ 再抽一签
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                disabled={isDrawing}
+                onClick={() => {
+                  setBlindBoxOpen(false)
+                  onSelectInspect(drawnCoffee)
+                }}
+              >
+                查看完整配方
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={isDrawing}
+                onClick={() => {
+                  setBlindBoxOpen(false)
+                  onStartBrew(drawnCoffee)
+                }}
+              >
+                立即冲煮这杯 →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

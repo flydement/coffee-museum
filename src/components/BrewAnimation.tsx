@@ -162,6 +162,79 @@ export function BrewAnimation({
     )
   }
 
+  // 1b. Chemex Hourglass Glass Brewer (MoMA Design Classic with Wood Collar & Leather Tie)
+  if (coffee.method === 'chemex') {
+    const lowerFillH = Math.round((fillPercent / 100) * 76)
+    const lowerFillY = 238 - lowerFillH
+
+    return (
+      <svg viewBox="0 0 320 270" width="100%" style={{ maxWidth: 340 }} aria-label="Chemex 沙漏手冲实时动态演示">
+        <defs>
+          <clipPath id="chemex-lower-clip">
+            <path d="M138 148 H182 L218 228 C221 235 215 240 207 240 H113 C105 240 99 235 102 228 Z" />
+          </clipPath>
+        </defs>
+
+        <rect x="78" y="242" width="164" height="10" rx="5" fill="#C9A87D" stroke="#6E4E34" strokeWidth="1.5" />
+
+        {/* Gooseneck kettle spout */}
+        <g transform={activePour ? 'translate(-6, 4) rotate(-6 240 44)' : 'translate(0, 0)'} style={{ transition: 'transform 0.5s ease' }}>
+          <path d="M276 52 C242 52, 224 28, 198 38 C184 43, 174 54, 166 58" stroke="#9E5E32" strokeWidth="8" strokeLinecap="round" fill="none" />
+          <path d="M276 52 C242 52, 224 28, 198 38 C184 43, 174 54, 166 58" stroke="#D9A36B" strokeWidth="3" strokeLinecap="round" fill="none" />
+          <ellipse cx="282" cy="58" rx="19" ry="24" fill="#B56E3B" stroke="#5A341C" strokeWidth="2" />
+        </g>
+
+        {activePour && (
+          <path className="svg-pour-stream" d="M164 60 Q160 82 160 106" stroke="#D6E6EE" strokeWidth="4" strokeLinecap="round" fill="none" />
+        )}
+
+        {/* Thick Square Chemex Paper Filter protruding top */}
+        <polygon points="104,78 216,78 176,144 144,144" fill="#FAF4E8" stroke="#8A6D53" strokeWidth="1.8" />
+        <polygon points="122,106 198,106 176,143 144,143" fill="#5E351F" />
+        {step.isBlooming && (
+          <g>
+            <circle className="svg-bloom-bubble" cx="148" cy="104" r="5.5" fill={crema} />
+            <circle className="svg-bloom-bubble" cx="161" cy="100" r="7.5" fill={crema} />
+            <circle className="svg-bloom-bubble" cx="174" cy="104" r="5" fill={crema} />
+          </g>
+        )}
+
+        {/* Hourglass Borosilicate Carafe */}
+        <path
+          d="M112 88 H208 L182 148 L218 228 C221 235 215 240 207 240 H113 C105 240 99 235 102 228 L138 148 Z"
+          fill="rgba(255,255,255,0.58)"
+          stroke="#463125"
+          strokeWidth="2.4"
+          strokeLinejoin="round"
+        />
+
+        {/* Brewed coffee inside lower flask */}
+        <g clipPath="url(#chemex-lower-clip)">
+          <rect
+            x="96"
+            y={lowerFillY}
+            width="128"
+            height={lowerFillH + 10}
+            fill={liquid}
+            style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
+          />
+          <ellipse cx="160" cy={lowerFillY} rx="52" ry="5.5" fill={crema} opacity="0.72" style={{ transition: 'cy 0.4s linear' }} />
+        </g>
+
+        {(activePour || step.phase === 'bloom' || step.phase === 'finish') && (
+          <circle className="svg-drip" cx="160" cy="154" r="3.6" fill={liquid} />
+        )}
+
+        {/* Iconic Polished Wood Collar & Rawhide Leather Tie + Wooden Bead */}
+        <path d="M132 134 H188 L184 166 H136 Z" fill="#AE733D" stroke="#463125" strokeWidth="2" strokeLinejoin="round" />
+        <line x1="134" y1="150" x2="186" y2="150" stroke="#5A331C" strokeWidth="3.5" />
+        <circle cx="160" cy="150" r="6" fill="#E3B376" stroke="#463125" strokeWidth="1.6" />
+
+        <SteamCurls show={step.hasSteam} y={70} />
+      </svg>
+    )
+  }
+
   // 2. French Press (glass beaker + stainless frame + pressing mesh plunger)
   if (coffee.method === 'frenchpress') {
     const liquidH = Math.round((fillPercent / 100) * 116)
@@ -550,6 +623,7 @@ export function BrewAnimation({
     const topY = 232 - totalH
     const isDirty = coffee.method === 'dirty'
     const isLemon = coffee.method === 'iced'
+    const isOrange = coffee.id === 'orange-c-cold-americano'
     const isCreamTop = coffee.id === 'viennese-einspanner'
     const isAffogato = coffee.id === 'florence-affogato'
 
@@ -618,7 +692,17 @@ export function BrewAnimation({
                 y={topY}
                 width="116"
                 height={totalH + 14}
-                fill={isCreamTop ? liquid : isDirty ? crema : isLemon ? '#F2D985' : liquid}
+                fill={
+                  isCreamTop
+                    ? liquid
+                    : isDirty
+                      ? crema
+                      : isOrange
+                        ? '#F4A642'
+                        : isLemon
+                          ? '#F2D985'
+                          : liquid
+                }
                 style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
               />
 
@@ -651,9 +735,16 @@ export function BrewAnimation({
 
               {isLemon && (
                 <g transform="translate(186, 118) rotate(20)">
-                  <circle cx="0" cy="0" r="18" fill="#E8BE3C" stroke="#FFF4C2" strokeWidth="3" />
-                  <line x1="-14" y1="0" x2="14" y2="0" stroke="#FFF4C2" strokeWidth="1.5" />
-                  <line x1="0" y1="-14" x2="0" y2="14" stroke="#FFF4C2" strokeWidth="1.5" />
+                  <circle
+                    cx="0"
+                    cy="0"
+                    r="18"
+                    fill={isOrange ? '#E87B22' : '#E8BE3C'}
+                    stroke={isOrange ? '#FFE2B8' : '#FFF4C2'}
+                    strokeWidth="3"
+                  />
+                  <line x1="-14" y1="0" x2="14" y2="0" stroke={isOrange ? '#FFE2B8' : '#FFF4C2'} strokeWidth="1.5" />
+                  <line x1="0" y1="-14" x2="0" y2="14" stroke={isOrange ? '#FFE2B8' : '#FFF4C2'} strokeWidth="1.5" />
                 </g>
               )}
 

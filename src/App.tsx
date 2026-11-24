@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BrewStudio } from './components/BrewStudio'
+import { CoffeeAtlas } from './components/CoffeeAtlas'
 import { FlavorCurator } from './components/FlavorCurator'
 import { Header } from './components/Header'
 import { MuseumGallery } from './components/MuseumGallery'
@@ -18,6 +19,7 @@ import { setCafeAmbience } from './utils/platform'
 const ARCHIVE_STORAGE_KEY = 'atelier_coffee_museum_archive_v1'
 const WISHLIST_STORAGE_KEY = 'atelier_coffee_museum_wishlist_v1'
 const THEME_STORAGE_KEY = 'atelier_coffee_museum_theme_v1'
+const QUIZ_BEST_STORAGE_KEY = 'atelier_coffee_museum_quiz_best_v1'
 
 function loadArchive(): SavedBrewRecord[] {
   try {
@@ -50,6 +52,15 @@ function loadTheme(): MuseumTheme {
   }
 }
 
+function loadQuizBest(): number {
+  try {
+    const raw = Number(window.localStorage.getItem(QUIZ_BEST_STORAGE_KEY))
+    return Number.isFinite(raw) && raw > 0 ? raw : 0
+  } catch {
+    return 0
+  }
+}
+
 export default function App() {
   const [activeView, setActiveView] = useState<AppView>('curator')
   const [theme, setTheme] = useState<MuseumTheme>(() => loadTheme())
@@ -74,6 +85,7 @@ export default function App() {
 
   const [archive, setArchive] = useState<SavedBrewRecord[]>(() => loadArchive())
   const [wishlist, setWishlist] = useState<string[]>(() => loadWishlist())
+  const [bestQuizScore, setBestQuizScore] = useState<number>(() => loadQuizBest())
 
   useEffect(() => {
     try {
@@ -171,6 +183,18 @@ export default function App() {
     })
   }
 
+  const handleFinishQuiz = (score: number) => {
+    setBestQuizScore((prev) => {
+      const next = Math.max(prev, score)
+      try {
+        window.localStorage.setItem(QUIZ_BEST_STORAGE_KEY, String(next))
+      } catch {
+        // Ignore storage errors
+      }
+      return next
+    })
+  }
+
   return (
     <div className="app-shell">
       <Header
@@ -227,9 +251,19 @@ export default function App() {
           />
         )}
 
+        {activeView === 'atlas' && (
+          <CoffeeAtlas
+            onInspect={handleInspectFromCurator}
+            onStartBrew={(c) => handleStartBrew(c, 1, 'standard')}
+            bestQuizScore={bestQuizScore}
+            onFinishQuiz={(score) => handleFinishQuiz(score)}
+          />
+        )}
+
         {activeView === 'archive' && (
           <TastingArchive
             records={archive}
+            bestQuizScore={bestQuizScore}
             onDeleteRecord={handleDeleteRecord}
             onImportRecords={handleImportRecords}
             onRebrew={handleStartBrew}
@@ -240,7 +274,7 @@ export default function App() {
 
       <footer className="museum-footer">
         <div className="museum-footer-inner">
-          <span>拾光咖啡博物馆 · Atelier Café Museum v3.0</span>
+          <span>拾光咖啡博物馆 · Atelier Café Museum v4.0</span>
           <span>一套代码跨端架构：Web / PWA · PC (Electron) · Mobile (Capacitor)</span>
         </div>
       </footer>
