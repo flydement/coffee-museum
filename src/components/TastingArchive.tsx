@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { COFFEE_EXHIBITS } from '../data/coffees'
 import type {
   CoffeeExhibit,
+  FlavorProfile,
   PostcardTheme,
   SavedBrewRecord,
   TasteCustomizePreset,
@@ -12,6 +13,7 @@ import {
   renderPostcardDataUrl,
 } from '../utils/exportCard'
 import { computeCuratorBadges } from '../utils/platform'
+import { FlavorRadar } from './FlavorRadar'
 
 interface TastingArchiveProps {
   records: SavedBrewRecord[]
@@ -44,6 +46,37 @@ export function TastingArchive({
       ? (records.reduce((sum, r) => sum + r.rating, 0) / records.length).toFixed(1)
       : '—'
   const unlockedBadges = badges.filter((b) => b.unlocked).length
+
+  useEffect(() => {
+    if (!previewRec) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewRec(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [previewRec])
+
+  const averageFlavorProfile = useMemo<FlavorProfile | null>(() => {
+    if (records.length === 0) return null
+    const sum = records.reduce(
+      (acc, r) => ({
+        acidity: acc.acidity + r.flavorProfile.acidity,
+        sweetness: acc.sweetness + r.flavorProfile.sweetness,
+        body: acc.body + r.flavorProfile.body,
+        bitterness: acc.bitterness + r.flavorProfile.bitterness,
+        aroma: acc.aroma + r.flavorProfile.aroma,
+      }),
+      { acidity: 0, sweetness: 0, body: 0, bitterness: 0, aroma: 0 }
+    )
+    const n = records.length
+    return {
+      acidity: Math.round(sum.acidity / n),
+      sweetness: Math.round(sum.sweetness / n),
+      body: Math.round(sum.body / n),
+      bitterness: Math.round(sum.bitterness / n),
+      aroma: Math.round(sum.aroma / n),
+    }
+  }, [records])
 
   const previewDataUrl = useMemo(() => {
     if (!previewRec) return ''
@@ -174,6 +207,49 @@ export function TastingArchive({
           <div className="stat-plaque-label">已解锁策展徽章</div>
         </div>
       </div>
+
+      {/* Personal Flavor Portrait */}
+      {averageFlavorProfile && (
+        <section
+          aria-label="个人风味偏好画像"
+          style={{
+            marginBottom: 24,
+            padding: '20px 24px',
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--paper-surface)',
+            border: '1px solid var(--border-subtle)',
+            boxShadow: 'var(--shadow-soft)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 24,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ flex: '1 1 280px' }}>
+            <p className="eyebrow" style={{ marginBottom: 4 }}>
+              PERSONAL PALATE PORTRAIT · 个人风味偏好画像
+            </p>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', margin: '0 0 8px' }}>
+              基于你已冲煮的 {records.length} 杯馆藏生成的风味指纹
+            </h2>
+            <p className="section-lead" style={{ margin: '0 0 12px' }}>
+              酸度均值 {averageFlavorProfile.acidity} · 甜感均值 {averageFlavorProfile.sweetness} · 醇厚均值{' '}
+              {averageFlavorProfile.body} · 苦韵均值 {averageFlavorProfile.bitterness} · 花果香均值{' '}
+              {averageFlavorProfile.aroma}
+            </p>
+            <div className="pill-row">
+              {averageFlavorProfile.sweetness >= 80 && <span className="tag tag-brass">偏爱甘甜圆润</span>}
+              {averageFlavorProfile.acidity >= 65 && <span className="tag tag-brass">偏爱明亮果酸</span>}
+              {averageFlavorProfile.body >= 78 && <span className="tag tag-brass">偏爱丝绒醇厚</span>}
+              {averageFlavorProfile.aroma >= 85 && <span className="tag tag-sage">花果香气控</span>}
+            </div>
+          </div>
+          <div style={{ flex: '0 0 auto', margin: '0 auto' }}>
+            <FlavorRadar profile={averageFlavorProfile} size={186} />
+          </div>
+        </section>
+      )}
 
       {/* Curator Badges */}
       <div style={{ marginBottom: 14 }}>

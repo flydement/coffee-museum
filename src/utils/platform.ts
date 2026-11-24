@@ -215,7 +215,7 @@ export function computeCuratorBadges(
     {
       id: 'retro-craftsman',
       title: '复古器具匠人',
-      subtitle: '体验法压壶、爱乐压、摩卡壶或浓缩机',
+      subtitle: '体验虹吸壶、土耳其壶、法压壶、爱乐压或摩卡壶',
       unlocked: retroCount >= 2,
       progress: `${Math.min(2, retroCount)} / 2`,
     },
@@ -232,6 +232,13 @@ export function computeCuratorBadges(
       subtitle: '点亮 6 款不同馆藏咖啡展品',
       unlocked: uniqueIds.size >= 6,
       progress: `${Math.min(6, uniqueIds.size)} / 6`,
+    },
+    {
+      id: 'master-curator',
+      title: '博物馆荣誉馆长',
+      subtitle: '点亮 10 款不同世界馆藏风味展品',
+      unlocked: uniqueIds.size >= 10,
+      progress: `${Math.min(10, uniqueIds.size)} / 10`,
     },
   ]
 }

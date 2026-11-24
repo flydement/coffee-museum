@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { COFFEE_EXHIBITS } from '../data/coffees'
 import type {
   CoffeeExhibit,
@@ -82,39 +82,47 @@ export function BrewStudio({
     [coffee.steps, muted]
   )
 
-  // Countdown timer loop with optional hands-free auto-advance
+  const remainingRef = useRef(remainingSec)
   useEffect(() => {
-    if (!isRunning || isComplete || remainingSec <= 0) return
-    const timer = window.setInterval(() => {
-      setRemainingSec((prev) => {
-        if (prev <= 1) {
-          window.clearInterval(timer)
-          if (autoAdvance) {
-            const nextIdx = stepIndex + 1
-            if (nextIdx >= coffee.steps.length) {
-              setIsRunning(false)
-              setCompletedAt(new Date().toISOString())
-              setIsComplete(true)
-              if (!muted) playGentleChime('complete')
-            } else {
-              const nextStepObj = coffee.steps[nextIdx]
-              if (!muted) playGentleChime('step')
-              setStepIndex(nextIdx)
-              setRemainingSec(nextStepObj.durationSec)
-              setIsRunning(nextStepObj.durationSec > 0)
-            }
-          } else {
-            setIsRunning(false)
-            if (!muted) playGentleChime('step')
-          }
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    remainingRef.current = remainingSec
+  }, [remainingSec])
 
+  // Drift-free 1s interval (no remainingSec in deps; all state updates happen inside async timer callback)
+  useEffect(() => {
+    if (!isRunning || isComplete) return
+    const timer = window.setInterval(() => {
+      const current = remainingRef.current
+      if (current <= 1) {
+        remainingRef.current = 0
+        if (autoAdvance) {
+          const nextIdx = stepIndex + 1
+          if (nextIdx >= coffee.steps.length) {
+            setRemainingSec(0)
+            setIsRunning(false)
+            setCompletedAt(new Date().toISOString())
+            setIsComplete(true)
+            if (!muted) playGentleChime('complete')
+          } else {
+            const nextStepObj = coffee.steps[nextIdx]
+            remainingRef.current = nextStepObj.durationSec
+            if (!muted) playGentleChime('step')
+            setStepIndex(nextIdx)
+            setRemainingSec(nextStepObj.durationSec)
+            setIsRunning(nextStepObj.durationSec > 0)
+          }
+        } else {
+          setRemainingSec(0)
+          setIsRunning(false)
+          if (!muted) playGentleChime('step')
+        }
+      } else {
+        const nextVal = current - 1
+        remainingRef.current = nextVal
+        setRemainingSec(nextVal)
+      }
+    }, 1000)
     return () => window.clearInterval(timer)
-  }, [autoAdvance, coffee.steps, isComplete, isRunning, muted, remainingSec, stepIndex])
+  }, [autoAdvance, coffee.steps, isComplete, isRunning, muted, stepIndex])
 
   // Keep mobile/tablet screen awake during active countdown
   useEffect(() => {
@@ -193,10 +201,19 @@ export function BrewStudio({
     )
   }
 
+  const totalRemainingSec = useMemo(() => {
+    const upcoming = coffee.steps
+      .slice(stepIndex + 1)
+      .reduce((sum, s) => sum + s.durationSec, 0)
+    return remainingSec + upcoming
+  }, [coffee.steps, remainingSec, stepIndex])
+
+  const currentYear = useMemo(() => new Date(completedAt).getFullYear(), [completedAt])
+
   const handleSaveArchive = () => {
     const record: SavedBrewRecord = {
       recordId: `${coffee.id}-${Date.now()}`,
-      catalogNumber: `#2026-${String(existingCount + 1).padStart(3, '0')}`,
+      catalogNumber: `#${currentYear}-${String(existingCount + 1).padStart(3, '0')}`,
       coffeeId: coffee.id,
       coffeeName: coffee.name,
       englishName: coffee.englishName,
@@ -223,7 +240,7 @@ export function BrewStudio({
     if (savedRecord) return savedRecord
     return {
       recordId: 'preview',
-      catalogNumber: `#2026-${String(existingCount + 1).padStart(3, '0')}`,
+      catalogNumber: `#${currentYear}-${String(existingCount + 1).padStart(3, '0')}`,
       coffeeId: coffee.id,
       coffeeName: coffee.name,
       englishName: coffee.englishName,
@@ -245,6 +262,7 @@ export function BrewStudio({
   }, [
     coffee,
     completedAt,
+    currentYear,
     existingCount,
     rating,
     savedRecord,
@@ -602,7 +620,10 @@ export function BrewStudio({
                 gap: 8,
               }}
             >
-              <span>水温：{scaled.waterTempC}°C · 粉水比 {coffee.recipe.ratioLabel}</span>
+              <span>
+                水温：{scaled.waterTempC}°C · 粉水比 {coffee.recipe.ratioLabel} · 预计总剩余{' '}
+                {formatSeconds(totalRemainingSec)}
+              </span>
               <span>PC 快捷键：空格计时 · ←/→ 切步</span>
             </div>
           </div>
@@ -730,22 +751,26 @@ export function BrewStudio({
                 </div>
                 <div className="prep-checklist">
                   {[
-                    `称取 ${scaled.doseGrams}g 粉`,
-                    '温热杯具与器具',
-                    scaled.waterTempC <= 15
-                      ? '备好冰水/冰块'
-                      : `水温备至 ${scaled.waterTempC}°C`,
+                    { id: 'dose', label: `称取 ${scaled.doseGrams}g 粉` },
+                    { id: 'preheat', label: '温热杯具与器具' },
+                    {
+                      id: 'water',
+                      label:
+                        scaled.waterTempC <= 15
+                          ? '备好冰水/冰块'
+                          : `水温备至 ${scaled.waterTempC}°C`,
+                    },
                   ].map((item) => {
-                    const checked = prepChecks.includes(item)
+                    const checked = prepChecks.includes(item.id)
                     return (
                       <button
-                        key={item}
+                        key={item.id}
                         type="button"
                         className={`prep-check-btn ${checked ? 'checked' : ''}`}
-                        onClick={() => togglePrepCheck(item)}
+                        onClick={() => togglePrepCheck(item.id)}
                       >
                         <span>{checked ? '✓' : '○'}</span>
-                        <span>{item}</span>
+                        <span>{item.label}</span>
                       </button>
                     )
                   })}

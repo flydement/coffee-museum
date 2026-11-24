@@ -1,4 +1,4 @@
-const CACHE_NAME = 'coffee-museum-v3'
+const CACHE_NAME = 'coffee-museum-v4'
 const PRECACHE_ASSETS = ['./manifest.webmanifest', './icon.svg']
 
 self.addEventListener('install', (event) => {

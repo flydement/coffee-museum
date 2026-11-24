@@ -8,6 +8,8 @@ export type BrewMethod =
   | 'iced'
   | 'frenchpress'
   | 'aeropress'
+  | 'syphon'
+  | 'turkish'
 
 export type DrinkCategory = '手冲黑咖' | '意式奶咖' | '冰爽特调' | '复古器具'
 

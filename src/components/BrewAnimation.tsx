@@ -132,6 +132,13 @@ export function BrewAnimation({
             opacity="0.75"
             style={{ transition: 'cy 0.4s linear' }}
           />
+          {step.hasIce && (
+            <g opacity="0.76">
+              <rect x="118" y="204" width="24" height="24" rx="4" transform="rotate(-10 130 216)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
+              <rect x="149" y="208" width="26" height="26" rx="4" transform="rotate(12 162 221)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
+              <rect x="178" y="202" width="22" height="22" rx="4" transform="rotate(-8 189 213)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
+            </g>
+          )}
         </g>
 
         {(activePour || step.phase === 'bloom' || step.phase === 'finish') && (
@@ -537,13 +544,14 @@ export function BrewAnimation({
     )
   }
 
-  // 6. Layered Dirty / Coconut Cloud / Einspänner / Cold Brew / Sicilian Iced glass
+  // 6. Layered Dirty / Coconut Cloud / Einspänner / Affogato / Cold Brew / Sicilian Iced glass
   if (coffee.method === 'dirty' || coffee.method === 'coldbrew' || coffee.method === 'iced') {
     const totalH = Math.round((fillPercent / 100) * 144)
     const topY = 232 - totalH
     const isDirty = coffee.method === 'dirty'
     const isLemon = coffee.method === 'iced'
     const isCreamTop = coffee.id === 'viennese-einspanner'
+    const isAffogato = coffee.id === 'florence-affogato'
 
     return (
       <svg viewBox="0 0 320 270" width="100%" style={{ maxWidth: 340 }} aria-label="冰饮与分层咖啡实时演示">
@@ -561,7 +569,7 @@ export function BrewAnimation({
             x1="160"
             y1="26"
             x2="160"
-            y2={Math.max(90, topY + 12)}
+            y2={Math.max(90, isAffogato ? 148 : topY + 12)}
             stroke={isCreamTop && step.phase === 'assemble' ? crema : isDirty || step.phase === 'extract' ? liquid : '#B8D4DC'}
             strokeWidth="5.5"
             strokeLinecap="round"
@@ -576,62 +584,292 @@ export function BrewAnimation({
         />
 
         <g clipPath="url(#glass-clip)">
-          <rect
-            x="102"
-            y={topY}
-            width="116"
-            height={totalH + 14}
-            fill={isCreamTop ? liquid : isDirty ? crema : isLemon ? '#F2D985' : liquid}
-            style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
-          />
-
-          {/* Layered cascade */}
-          {isCreamTop && fillPercent > 80 ? (
-            <path
-              d={`M102 ${topY} H218 V${topY + 38} Q188 ${topY + 46} 160 ${topY + 40} T102 ${topY + 42} Z`}
-              fill={crema}
-              style={{ transition: 'all 0.5s ease' }}
-            />
+          {isAffogato ? (
+            <>
+              {/* Espresso pool rising around the vanilla gelato */}
+              {fillPercent > 52 && (
+                <rect
+                  x="102"
+                  y={Math.min(220, topY + 26)}
+                  width="116"
+                  height={Math.max(24, totalH)}
+                  fill={liquid}
+                  style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
+                />
+              )}
+              {/* Vanilla Gelato Scoop */}
+              <circle cx="160" cy="182" r="38" fill="#FFF7E4" stroke="#E5D4B3" strokeWidth="2" />
+              <circle cx="144" cy="172" r="2.2" fill="#9C7A4D" opacity="0.55" />
+              <circle cx="168" cy="166" r="1.8" fill="#9C7A4D" opacity="0.55" />
+              <circle cx="172" cy="188" r="2" fill="#9C7A4D" opacity="0.5" />
+              {/* Espresso glaze cascading over the scoop */}
+              {fillPercent > 65 && (
+                <path
+                  d="M126 168 Q144 142 160 144 Q178 144 194 170 Q180 182 170 174 Q158 190 146 176 Q135 184 126 168 Z"
+                  fill={liquid}
+                  opacity="0.88"
+                />
+              )}
+            </>
           ) : (
-            (isDirty || isLemon) &&
-            fillPercent > 75 && (
-              <path
-                d={`M102 ${topY} H218 V${topY + 46} Q188 ${topY + 62} 160 ${topY + 50} T102 ${topY + 54} Z`}
-                fill={liquid}
-                opacity="0.92"
-                style={{ transition: 'all 0.5s ease' }}
+            <>
+              <rect
+                x="102"
+                y={topY}
+                width="116"
+                height={totalH + 14}
+                fill={isCreamTop ? liquid : isDirty ? crema : isLemon ? '#F2D985' : liquid}
+                style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
               />
-            )
-          )}
 
-          {step.hasIce && (
-            <g opacity="0.72">
-              <rect x="128" y="138" width="26" height="26" rx="5" transform="rotate(-10 141 151)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
-              <rect x="160" y="156" width="28" height="28" rx="5" transform="rotate(14 174 170)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
-              <rect x="136" y="182" width="24" height="24" rx="5" transform="rotate(8 148 194)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
-            </g>
-          )}
+              {/* Layered cascade */}
+              {isCreamTop && fillPercent > 80 ? (
+                <path
+                  d={`M102 ${topY} H218 V${topY + 38} Q188 ${topY + 46} 160 ${topY + 40} T102 ${topY + 42} Z`}
+                  fill={crema}
+                  style={{ transition: 'all 0.5s ease' }}
+                />
+              ) : (
+                (isDirty || isLemon) &&
+                fillPercent > 75 && (
+                  <path
+                    d={`M102 ${topY} H218 V${topY + 46} Q188 ${topY + 62} 160 ${topY + 50} T102 ${topY + 54} Z`}
+                    fill={liquid}
+                    opacity="0.92"
+                    style={{ transition: 'all 0.5s ease' }}
+                  />
+                )
+              )}
 
-          {isLemon && (
-            <g transform="translate(186, 118) rotate(20)">
-              <circle cx="0" cy="0" r="18" fill="#E8BE3C" stroke="#FFF4C2" strokeWidth="3" />
-              <line x1="-14" y1="0" x2="14" y2="0" stroke="#FFF4C2" strokeWidth="1.5" />
-              <line x1="0" y1="-14" x2="0" y2="14" stroke="#FFF4C2" strokeWidth="1.5" />
-            </g>
-          )}
+              {step.hasIce && (
+                <g opacity="0.72">
+                  <rect x="128" y="138" width="26" height="26" rx="5" transform="rotate(-10 141 151)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
+                  <rect x="160" y="156" width="28" height="28" rx="5" transform="rotate(14 174 170)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
+                  <rect x="136" y="182" width="24" height="24" rx="5" transform="rotate(8 148 194)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
+                </g>
+              )}
 
-          {isDirty && fillPercent >= 90 && (
-            <g fill={isCreamTop ? '#7D4E32' : '#E6B24C'}>
-              <circle cx="144" cy={topY + 8} r="2.8" />
-              <circle cx="158" cy={topY + 6} r="3.2" />
-              <circle cx="171" cy={topY + 9} r="2.6" />
-              <circle cx="152" cy={topY + 12} r="2.2" />
-            </g>
+              {isLemon && (
+                <g transform="translate(186, 118) rotate(20)">
+                  <circle cx="0" cy="0" r="18" fill="#E8BE3C" stroke="#FFF4C2" strokeWidth="3" />
+                  <line x1="-14" y1="0" x2="14" y2="0" stroke="#FFF4C2" strokeWidth="1.5" />
+                  <line x1="0" y1="-14" x2="0" y2="14" stroke="#FFF4C2" strokeWidth="1.5" />
+                </g>
+              )}
+
+              {isDirty && fillPercent >= 90 && (
+                <g fill={isCreamTop ? '#7D4E32' : '#E6B24C'}>
+                  <circle cx="144" cy={topY + 8} r="2.8" />
+                  <circle cx="158" cy={topY + 6} r="3.2" />
+                  <circle cx="171" cy={topY + 9} r="2.6" />
+                  <circle cx="152" cy={topY + 12} r="2.2" />
+                </g>
+              )}
+            </>
           )}
         </g>
 
         <line x1="120" y1="90" x2="128" y2="220" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" opacity="0.65" />
         <SteamCurls show={step.hasSteam} y={70} />
+      </svg>
+    )
+  }
+
+  // 7. Vacuum Siphon (Syphon) Glass Brewer
+  if (coffee.method === 'syphon') {
+    const isRising = step.phase === 'bloom'
+    const isSteeping = step.phase === 'pour'
+    const isDrawdown = step.phase === 'extract' || step.phase === 'finish'
+
+    const upperFillH = isRising
+      ? Math.round(14 + stepProgress * 44)
+      : isSteeping
+        ? 58
+        : isDrawdown
+          ? Math.max(6, Math.round(58 * (1 - stepProgress)))
+          : 0
+    const lowerFillH = isRising
+      ? Math.max(12, Math.round(48 * (1 - stepProgress * 0.72)))
+      : isSteeping
+        ? 14
+        : isDrawdown
+          ? Math.round(14 + stepProgress * 44)
+          : 44
+
+    const isHeating = isRising || isSteeping
+
+    return (
+      <svg viewBox="0 0 320 270" width="100%" style={{ maxWidth: 340 }} aria-label="虹吸壶真空萃取实时演示">
+        <defs>
+          <clipPath id="syphon-upper-clip">
+            <rect x="122" y="42" width="76" height="72" rx="16" />
+          </clipPath>
+          <clipPath id="syphon-lower-clip">
+            <circle cx="160" cy="182" r="40" />
+          </clipPath>
+        </defs>
+
+        {/* Brass Stand & Alcohol Burner */}
+        <path d="M98 242 H222 M204 242 V132 H186" stroke="#8E5C29" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <rect x="136" y="230" width="48" height="12" rx="5" fill="#B88446" stroke="#3E2A20" strokeWidth="1.6" />
+        {isHeating && (
+          <g>
+            <path d="M160 212 C152 222, 154 230, 160 230 C166 230, 168 222, 160 212 Z" fill="#E68A3E" opacity="0.9" />
+            <path d="M160 218 C156 224, 157 229, 160 229 C163 229, 164 224, 160 218 Z" fill="#FCE29C" />
+          </g>
+        )}
+
+        {/* Lower Glass Bulb */}
+        <circle cx="160" cy="182" r="40" fill="rgba(255,255,255,0.68)" stroke="#3E2A20" strokeWidth="2.3" />
+        <g clipPath="url(#syphon-lower-clip)">
+          <rect
+            x="116"
+            y={222 - lowerFillH}
+            width="88"
+            height={lowerFillH + 8}
+            fill={isDrawdown ? liquid : '#D8E6EC'}
+            opacity={isDrawdown ? 0.94 : 0.78}
+            style={{ transition: 'y 0.4s linear, height 0.4s linear, fill 0.5s ease' }}
+          />
+          {isDrawdown && (
+            <ellipse cx="160" cy={222 - lowerFillH} rx="38" ry="5" fill={crema} opacity="0.78" />
+          )}
+        </g>
+
+        {/* Rubber Collar & Glass Siphon Tube */}
+        <rect x="148" y="132" width="24" height="14" rx="4" fill="#2A1D16" />
+        <rect x="156" y="112" width="8" height="94" fill="rgba(255,255,255,0.55)" stroke="#3E2A20" strokeWidth="1.6" />
+        {(isRising || isDrawdown) && activePour && (
+          <line
+            className="svg-pour-stream"
+            x1="160"
+            y1="114"
+            x2="160"
+            y2="202"
+            stroke={isDrawdown ? liquid : '#B8D4DC'}
+            strokeWidth="4.2"
+          />
+        )}
+
+        {/* Upper Glass Chamber */}
+        <rect x="122" y="42" width="76" height="72" rx="16" fill="rgba(255,255,255,0.7)" stroke="#3E2A20" strokeWidth="2.3" />
+        <g clipPath="url(#syphon-upper-clip)">
+          {upperFillH > 0 && (
+            <>
+              <rect
+                x="118"
+                y={114 - upperFillH}
+                width="84"
+                height={upperFillH + 6}
+                fill={liquid}
+                style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
+              />
+              <rect
+                x="118"
+                y={114 - upperFillH}
+                width="84"
+                height="9"
+                fill={crema}
+                opacity="0.85"
+                style={{ transition: 'y 0.4s linear' }}
+              />
+            </>
+          )}
+          {step.isBlooming && (
+            <g>
+              <circle className="svg-bloom-bubble" cx="146" cy={114 - upperFillH + 14} r="4.5" fill={crema} />
+              <circle className="svg-bloom-bubble" cx="162" cy={114 - upperFillH + 18} r="5.5" fill={crema} />
+              <circle className="svg-bloom-bubble" cx="174" cy={114 - upperFillH + 13} r="4" fill={crema} />
+            </g>
+          )}
+        </g>
+
+        {/* Cloth Filter Disk */}
+        <ellipse cx="160" cy="112" rx="14" ry="3.5" fill="#F2E7D3" stroke="#6E4E34" strokeWidth="1.4" />
+        <SteamCurls show={step.hasSteam} y={38} />
+      </svg>
+    )
+  }
+
+  // 8. Turkish Copper Cezve / Ibrik over Warm Flame
+  if (coffee.method === 'turkish') {
+    const foamRise =
+      step.phase === 'bloom'
+        ? Math.round(stepProgress * 18)
+        : step.phase === 'extract'
+          ? 20
+          : step.phase === 'finish'
+            ? 10
+            : 4
+    const isHeating = step.phase === 'bloom' || step.phase === 'extract'
+
+    return (
+      <svg viewBox="0 0 320 270" width="100%" style={{ maxWidth: 340 }} aria-label="土耳其铜壶煮制实时演示">
+        {/* Warm Brass Burner / Sand Bed */}
+        <ellipse cx="148" cy="236" rx="74" ry="12" fill="#D2B086" stroke="#7A5B47" strokeWidth="1.6" />
+        {isHeating && (
+          <g>
+            <ellipse cx="148" cy="230" rx="44" ry="7" fill="#E37C35" opacity="0.52" />
+            <path d="M132 232 Q138 218 144 232 M148 232 Q154 214 160 232 M162 232 Q166 220 170 232" stroke="#F6C86E" strokeWidth="3" strokeLinecap="round" fill="none" />
+          </g>
+        )}
+
+        {/* Long Brass & Walnut Handle */}
+        <path
+          d="M192 146 L278 96"
+          stroke="#463125"
+          strokeWidth="10"
+          strokeLinecap="round"
+        />
+        <path
+          d="M192 146 L236 120"
+          stroke="#C28848"
+          strokeWidth="7"
+          strokeLinecap="round"
+        />
+
+        {/* Hammered Copper Cezve Body */}
+        <path
+          d="M108 124 H188 L206 218 C207 224 201 230 194 230 H102 C95 230 89 224 90 218 Z"
+          fill="#C57D3E"
+          stroke="#3E2A20"
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+        />
+        {/* Copper Highlight & Decorative Band */}
+        <path d="M118 134 L106 218" stroke="#E8B27A" strokeWidth="5" strokeLinecap="round" opacity="0.45" />
+        <path d="M102 164 H194" stroke="#8C4E22" strokeWidth="2.2" opacity="0.7" />
+        <path d="M98 172 H198" stroke="#E5B076" strokeWidth="1.4" opacity="0.7" />
+
+        {/* Rising Dark Coffee & Cardamom Foam Crown */}
+        <ellipse
+          cx="148"
+          cy={124 - foamRise * 0.4}
+          rx="40"
+          ry={10 + foamRise * 0.35}
+          fill={liquid}
+          stroke="#3E2A20"
+          strokeWidth="1.8"
+          style={{ transition: 'all 0.4s ease' }}
+        />
+        <ellipse
+          cx="148"
+          cy={122 - foamRise * 0.5}
+          rx="36"
+          ry={8 + foamRise * 0.3}
+          fill={crema}
+          opacity="0.92"
+          style={{ transition: 'all 0.4s ease' }}
+        />
+        {step.isBlooming && (
+          <g>
+            <circle className="svg-bloom-bubble" cx="132" cy={118 - foamRise * 0.5} r="5" fill="#E8B77C" />
+            <circle className="svg-bloom-bubble" cx="150" cy={114 - foamRise * 0.5} r="6.5" fill="#F2CA93" />
+            <circle className="svg-bloom-bubble" cx="166" cy={118 - foamRise * 0.5} r="4.5" fill="#E8B77C" />
+          </g>
+        )}
+
+        <SteamCurls show={step.hasSteam} y={92} />
       </svg>
     )
   }

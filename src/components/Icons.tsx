@@ -237,6 +237,30 @@ export function CupEmblem({
     )
   }
 
+  if (method === 'syphon') {
+    return (
+      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="13" y="6" width="14" height="12" rx="4" fill="#FCF9F3" stroke="#3E2A20" strokeWidth="1.7" />
+        <rect x="14" y="11" width="12" height="6" rx="2" fill={liquid} opacity="0.88" />
+        <line x1="20" y1="18" x2="20" y2="27" stroke="#3E2A20" strokeWidth="1.8" />
+        <circle cx="20" cy="27.5" r="7" fill="#FCF9F3" stroke="#3E2A20" strokeWidth="1.8" />
+        <path d="M13.5 28.5H26.5C26 32 23.4 34.5 20 34.5C16.6 34.5 14 32 13.5 28.5Z" fill={liquid} />
+        <line x1="12" y1="36" x2="28" y2="36" stroke="#B88446" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  if (method === 'turkish') {
+    return (
+      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <path d="M11 15H24L26.5 32C26.5 33.4 25.4 34.5 24 34.5H11C9.6 34.5 8.5 33.4 8.5 32L11 15Z" fill="#C98A49" stroke="#3E2A20" strokeWidth="1.8" strokeLinejoin="round" />
+        <ellipse cx="17.5" cy="15" rx="6.5" ry="2.2" fill={crema} stroke="#3E2A20" strokeWidth="1.4" />
+        <path d="M24 17.5L35 11.5" stroke="#3E2A20" strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M14.5 11C14.5 9.6 15.8 9.2 15.5 7.8M19.5 11C19.5 9.6 20.8 9.2 20.5 7.8" stroke="#B88446" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
   return (
     <svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
       <path d="M8 14H27V22C27 27.523 22.523 32 17 32C11.477 32 8 27.523 8 22V14Z" fill={liquid} stroke="#3E2A20" strokeWidth="1.8" />

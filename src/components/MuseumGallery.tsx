@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { COFFEE_EXHIBITS } from '../data/coffees'
 import type {
   CoffeeExhibit,
   DrinkCategory,
   TasteCustomizePreset,
+  TemperatureStyle,
 } from '../types/coffee'
 import { scaleRecipe, TASTE_PRESET_OPTIONS } from '../utils/platform'
 import { FlavorRadar } from './FlavorRadar'
@@ -31,6 +32,7 @@ const CATEGORIES: ('全部' | DrinkCategory)[] = [
 ]
 
 type RoastFilter = 'all' | 'light' | 'medium' | 'dark'
+type SortOption = 'default' | 'acidity' | 'sweetness' | 'body' | 'aroma'
 
 export function MuseumGallery({
   inspectedCoffee,
@@ -42,6 +44,8 @@ export function MuseumGallery({
 }: MuseumGalleryProps) {
   const [category, setCategory] = useState<'全部' | DrinkCategory>('全部')
   const [roastFilter, setRoastFilter] = useState<RoastFilter>('all')
+  const [tempFilter, setTempFilter] = useState<'all' | TemperatureStyle>('all')
+  const [sortBy, setSortBy] = useState<SortOption>('default')
   const [onlyWishlist, setOnlyWishlist] = useState(false)
   const [search, setSearch] = useState('')
   const [modalServings, setModalServings] = useState(1)
@@ -51,11 +55,39 @@ export function MuseumGallery({
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [showCompareModal, setShowCompareModal] = useState(false)
 
+  // Close open modals on Escape key
+  useEffect(() => {
+    if (!inspectedCoffee && !showCompareModal) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showCompareModal) setShowCompareModal(false)
+        else if (inspectedCoffee) onInspect(null)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [inspectedCoffee, onInspect, showCompareModal])
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<'全部' | DrinkCategory, number> = {
+      全部: COFFEE_EXHIBITS.length,
+      手冲黑咖: 0,
+      意式奶咖: 0,
+      冰爽特调: 0,
+      复古器具: 0,
+    }
+    COFFEE_EXHIBITS.forEach((c) => {
+      counts[c.category] += 1
+    })
+    return counts
+  }, [])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return COFFEE_EXHIBITS.filter((c) => {
+    const list = COFFEE_EXHIBITS.filter((c) => {
       if (category !== '全部' && c.category !== category) return false
       if (onlyWishlist && !wishlistIds.has(c.id)) return false
+      if (tempFilter !== 'all' && c.temperature !== tempFilter) return false
       if (roastFilter === 'light' && c.roastValue > 2) return false
       if (roastFilter === 'medium' && c.roastValue !== 3) return false
       if (roastFilter === 'dark' && c.roastValue < 4) return false
@@ -63,12 +95,20 @@ export function MuseumGallery({
       return (
         c.name.toLowerCase().includes(q) ||
         c.englishName.toLowerCase().includes(q) ||
+        c.exhibitNo.toLowerCase().includes(q) ||
         c.origin.toLowerCase().includes(q) ||
+        c.process.toLowerCase().includes(q) ||
+        c.subtitle.toLowerCase().includes(q) ||
+        c.roast.toLowerCase().includes(q) ||
+        c.category.toLowerCase().includes(q) ||
         c.flavorNotes.some((n) => n.toLowerCase().includes(q)) ||
         c.methodLabel.toLowerCase().includes(q)
       )
     })
-  }, [category, onlyWishlist, roastFilter, search, wishlistIds])
+
+    if (sortBy === 'default') return list
+    return [...list].sort((a, b) => b.flavorProfile[sortBy] - a.flavorProfile[sortBy])
+  }, [category, onlyWishlist, roastFilter, search, sortBy, tempFilter, wishlistIds])
 
   const openModal = (coffee: CoffeeExhibit) => {
     setModalServings(1)
@@ -128,7 +168,7 @@ export function MuseumGallery({
                 className={`filter-pill ${category === cat ? 'active' : ''}`}
                 onClick={() => setCategory(cat)}
               >
-                {cat}
+                {cat} ({categoryCounts[cat]})
               </button>
             ))}
           </div>
@@ -150,17 +190,58 @@ export function MuseumGallery({
                 {r.label}
               </button>
             ))}
+
+            <span style={{ opacity: 0.25, alignSelf: 'center' }}>|</span>
+
+            {[
+              { id: 'all' as const, label: '全部温度' },
+              { id: '热饮' as const, label: '热饮' },
+              { id: '冷饮' as const, label: '冷饮' },
+              { id: '冷热分层' as const, label: '冷热分层' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`mood-pill ${tempFilter === t.id ? 'active' : ''}`}
+                style={{ padding: '4px 11px', fontSize: '0.78rem' }}
+                onClick={() => setTempFilter(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <input
-          id="gallery-search-input"
-          type="search"
-          className="search-input"
-          placeholder="搜索风味、产区或器具（如 生椰 / 法压 / 耶加）"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select
+            id="gallery-sort-select"
+            aria-label="展品排序方式"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            style={{
+              padding: '9px 12px',
+              borderRadius: 999,
+              border: '1px solid var(--border-strong)',
+              background: 'var(--paper-surface)',
+              fontSize: '0.82rem',
+            }}
+          >
+            <option value="default">按馆藏编号排序</option>
+            <option value="aroma">花果香气由高到低</option>
+            <option value="sweetness">甘甜度由高到低</option>
+            <option value="acidity">明亮果酸由高到低</option>
+            <option value="body">醇厚度由高到低</option>
+          </select>
+
+          <input
+            id="gallery-search-input"
+            type="search"
+            className="search-input"
+            placeholder="搜索风味、产区或器具（如 虹吸 / 云南 / 蓝山 / 阿芙佳朵）"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="gallery-grid">
@@ -265,6 +346,8 @@ export function MuseumGallery({
             onClick={() => {
               setCategory('全部')
               setRoastFilter('all')
+              setTempFilter('all')
+              setSortBy('default')
               setOnlyWishlist(false)
               setSearch('')
             }}

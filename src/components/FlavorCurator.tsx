@@ -139,7 +139,9 @@ export function FlavorCurator({
               <div className="hero-metric-label">世界代表性馆藏风味</div>
             </div>
             <div>
-              <div className="hero-metric-val">8</div>
+              <div className="hero-metric-val">
+                {new Set(COFFEE_EXHIBITS.map((c) => c.method)).size}
+              </div>
               <div className="hero-metric-label">动态器具实时萃取引导</div>
             </div>
             <div>

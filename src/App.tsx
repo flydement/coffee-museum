@@ -240,7 +240,7 @@ export default function App() {
 
       <footer className="museum-footer">
         <div className="museum-footer-inner">
-          <span>拾光咖啡博物馆 · Atelier Café Museum v2.0</span>
+          <span>拾光咖啡博物馆 · Atelier Café Museum v3.0</span>
           <span>一套代码跨端架构：Web / PWA · PC (Electron) · Mobile (Capacitor)</span>
         </div>
       </footer>

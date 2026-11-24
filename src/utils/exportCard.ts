@@ -305,7 +305,29 @@ export function renderPostcardDataUrl(
   ctx.font = '500 20px "Noto Serif SC", serif'
   const note =
     record.tastingNote.trim() || '“亲手完成的一杯馆藏风味，时间与香气在此刻定格。”'
-  ctx.fillText(note.slice(0, 36), 84, 1122)
+  const maxLineWidth = width - 168
+  const lines: string[] = []
+  let currentLine = ''
+  for (const ch of note) {
+    const test = currentLine + ch
+    if (ctx.measureText(test).width > maxLineWidth && currentLine) {
+      lines.push(currentLine)
+      currentLine = ch
+      if (lines.length === 2) break
+    } else {
+      currentLine = test
+    }
+  }
+  if (lines.length < 2 && currentLine) {
+    lines.push(currentLine)
+  }
+  lines.slice(0, 2).forEach((line, idx) => {
+    const displayLine =
+      idx === 1 && note.length > lines[0].length + line.length
+        ? `${line.slice(0, Math.max(0, line.length - 1))}…`
+        : line
+    ctx.fillText(displayLine, 84, 1114 + idx * 28)
+  })
 
   return canvas.toDataURL('image/png')
 }
