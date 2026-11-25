@@ -176,6 +176,19 @@ export default function App() {
     setArchive((prev) => prev.filter((r) => r.recordId !== recordId))
   }
 
+  const handleUpdateRecord = (
+    recordId: string,
+    updates: { rating: number; tastingNote: string }
+  ) => {
+    setArchive((prev) =>
+      prev.map((rec) =>
+        rec.recordId === recordId
+          ? { ...rec, rating: updates.rating, tastingNote: updates.tastingNote }
+          : rec
+      )
+    )
+  }
+
   const handleImportRecords = (incoming: SavedBrewRecord[]) => {
     setArchive((prev) => {
       const existingIds = new Set(prev.map((r) => r.recordId))
@@ -266,6 +279,7 @@ export default function App() {
             records={archive}
             bestQuizScore={bestQuizScore}
             onDeleteRecord={handleDeleteRecord}
+            onUpdateRecord={handleUpdateRecord}
             onImportRecords={handleImportRecords}
             onRebrew={handleStartBrew}
             onGoCurator={() => handleNavigate('curator')}

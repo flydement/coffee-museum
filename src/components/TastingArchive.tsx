@@ -19,6 +19,10 @@ interface TastingArchiveProps {
   records: SavedBrewRecord[]
   bestQuizScore: number
   onDeleteRecord: (recordId: string) => void
+  onUpdateRecord: (
+    recordId: string,
+    updates: { rating: number; tastingNote: string }
+  ) => void
   onImportRecords: (records: SavedBrewRecord[]) => void
   onRebrew: (
     coffee: CoffeeExhibit,
@@ -32,6 +36,7 @@ export function TastingArchive({
   records,
   bestQuizScore,
   onDeleteRecord,
+  onUpdateRecord,
   onImportRecords,
   onRebrew,
   onGoCurator,
@@ -39,7 +44,38 @@ export function TastingArchive({
   const [previewRec, setPreviewRec] = useState<SavedBrewRecord | null>(null)
   const [postcardTheme, setPostcardTheme] = useState<PostcardTheme>('parchment')
   const [backupNotice, setBackupNotice] = useState<string | null>(null)
+  const [archiveSearch, setArchiveSearch] = useState('')
+  const [onlyFiveStar, setOnlyFiveStar] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editRating, setEditRating] = useState(5)
+  const [editNote, setEditNote] = useState('')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const filteredRecords = useMemo(() => {
+    const q = archiveSearch.trim().toLowerCase()
+    return records.filter((rec) => {
+      if (onlyFiveStar && rec.rating < 5) return false
+      if (!q) return true
+      return (
+        rec.coffeeName.toLowerCase().includes(q) ||
+        rec.englishName.toLowerCase().includes(q) ||
+        rec.catalogNumber.toLowerCase().includes(q) ||
+        rec.tastingNote.toLowerCase().includes(q)
+      )
+    })
+  }, [archiveSearch, onlyFiveStar, records])
+
+  const startEdit = (rec: SavedBrewRecord) => {
+    setEditingId(rec.recordId)
+    setEditRating(rec.rating)
+    setEditNote(rec.tastingNote)
+  }
+
+  const saveEdit = (recordId: string) => {
+    onUpdateRecord(recordId, { rating: editRating, tastingNote: editNote })
+    setEditingId(null)
+    setBackupNotice('已更新品鉴星级与手记')
+  }
 
   const badges = computeCuratorBadges(records, COFFEE_EXHIBITS, bestQuizScore)
   const uniqueCount = new Set(records.map((r) => r.coffeeId)).size
@@ -281,9 +317,31 @@ export function TastingArchive({
       </div>
 
       {/* Saved Brews List */}
-      <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', margin: '0 0 14px' }}>
-        馆藏冲煮记录
-      </h2>
+      <div className="results-header" style={{ marginBottom: 14 }}>
+        <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', margin: 0 }}>
+          馆藏冲煮记录（{filteredRecords.length}）
+        </h2>
+        {records.length >= 2 && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`mood-pill ${onlyFiveStar ? 'active' : ''}`}
+              style={{ padding: '5px 11px', fontSize: '0.78rem' }}
+              onClick={() => setOnlyFiveStar((v) => !v)}
+            >
+              ★ 仅看五星最爱
+            </button>
+            <input
+              type="search"
+              className="search-input"
+              style={{ minWidth: 190, padding: '6px 12px', fontSize: '0.82rem' }}
+              placeholder="搜索馆藏名称或品鉴手记…"
+              value={archiveSearch}
+              onChange={(e) => setArchiveSearch(e.target.value)}
+            />
+          </div>
+        )}
+      </div>
 
       {records.length === 0 ? (
         <div className="archive-empty">
@@ -303,10 +361,26 @@ export function TastingArchive({
             去挑选第一杯咖啡
           </button>
         </div>
+      ) : filteredRecords.length === 0 ? (
+        <div className="archive-empty" style={{ padding: '32px 20px' }}>
+          <h3 className="exhibit-title">没有匹配的馆藏记录</h3>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            style={{ marginTop: 12 }}
+            onClick={() => {
+              setArchiveSearch('')
+              setOnlyFiveStar(false)
+            }}
+          >
+            显示全部记录
+          </button>
+        </div>
       ) : (
         <div className="archive-grid">
-          {records.map((rec) => {
+          {filteredRecords.map((rec) => {
             const matchedCoffee = COFFEE_EXHIBITS.find((c) => c.id === rec.coffeeId)
+            const isEditing = editingId === rec.recordId
             return (
               <article key={rec.recordId} className="exhibit-card">
                 <div className="exhibit-top-row">
@@ -323,14 +397,57 @@ export function TastingArchive({
                   <p className="exhibit-en">{rec.englishName}</p>
                 </div>
 
-                <div style={{ color: 'var(--brass-600)', fontSize: '1rem', letterSpacing: 2 }}>
-                  {'★'.repeat(rec.rating)}
-                  {'☆'.repeat(5 - rec.rating)}
-                </div>
+                {isEditing ? (
+                  <div className="archive-inline-editor">
+                    <div className="star-row" style={{ margin: '0 0 8px' }} role="radiogroup" aria-label="修改星级">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          className={`star-btn ${star <= editRating ? 'active' : ''}`}
+                          style={{ fontSize: '1.35rem' }}
+                          onClick={() => setEditRating(star)}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      className="tasting-textarea"
+                      style={{ minHeight: 74, fontSize: '0.86rem' }}
+                      placeholder="补充冷却后的风味变化或冲煮微调心得…"
+                      value={editNote}
+                      onChange={(e) => setEditNote(e.target.value)}
+                    />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => saveEdit(rec.recordId)}
+                      >
+                        保存修改
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setEditingId(null)}
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ color: 'var(--brass-600)', fontSize: '1rem', letterSpacing: 2 }}>
+                      {'★'.repeat(rec.rating)}
+                      {'☆'.repeat(5 - rec.rating)}
+                    </div>
 
-                <p className="exhibit-subtitle" style={{ fontStyle: 'italic' }}>
-                  “{rec.tastingNote.trim() || '按标准馆藏参数完成冲煮，香气干净平衡。'}”
-                </p>
+                    <p className="exhibit-subtitle" style={{ fontStyle: 'italic' }}>
+                      “{rec.tastingNote.trim() || '按标准馆藏参数完成冲煮，香气干净平衡。'}”
+                    </p>
+                  </>
+                )}
 
                 <div className="exhibit-spec-strip">
                   <span>{rec.methodLabel}</span>
@@ -359,6 +476,14 @@ export function TastingArchive({
                       复刻再冲
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ flex: 0 }}
+                    onClick={() => (isEditing ? setEditingId(null) : startEdit(rec))}
+                  >
+                    {isEditing ? '收起' : '编辑'}
+                  </button>
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"

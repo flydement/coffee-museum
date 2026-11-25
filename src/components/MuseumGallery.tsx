@@ -7,7 +7,13 @@ import type {
   TasteCustomizePreset,
   TemperatureStyle,
 } from '../types/coffee'
-import { scaleRecipe, TASTE_PRESET_OPTIONS } from '../utils/platform'
+import {
+  copyTextToClipboard,
+  formatRecipeShareText,
+  playGentleChime,
+  scaleRecipe,
+  TASTE_PRESET_OPTIONS,
+} from '../utils/platform'
 import { FlavorRadar } from './FlavorRadar'
 import { BookmarkHeartIcon, CupEmblem } from './Icons'
 
@@ -33,6 +39,7 @@ const CATEGORIES: ('全部' | DrinkCategory)[] = [
 ]
 
 type RoastFilter = 'all' | 'light' | 'medium' | 'dark'
+type DifficultyFilter = 'all' | CoffeeExhibit['recipe']['difficulty']
 type SortOption = 'default' | 'acidity' | 'sweetness' | 'body' | 'aroma'
 
 export function MuseumGallery({
@@ -46,6 +53,7 @@ export function MuseumGallery({
   const [category, setCategory] = useState<'全部' | DrinkCategory>('全部')
   const [roastFilter, setRoastFilter] = useState<RoastFilter>('all')
   const [tempFilter, setTempFilter] = useState<'all' | TemperatureStyle>('all')
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>('all')
   const [sortBy, setSortBy] = useState<SortOption>('default')
   const [onlyWishlist, setOnlyWishlist] = useState(false)
   const [search, setSearch] = useState('')
@@ -89,6 +97,7 @@ export function MuseumGallery({
       if (category !== '全部' && c.category !== category) return false
       if (onlyWishlist && !wishlistIds.has(c.id)) return false
       if (tempFilter !== 'all' && c.temperature !== tempFilter) return false
+      if (difficultyFilter !== 'all' && c.recipe.difficulty !== difficultyFilter) return false
       if (roastFilter === 'light' && c.roastValue > 2) return false
       if (roastFilter === 'medium' && c.roastValue !== 3) return false
       if (roastFilter === 'dark' && c.roastValue < 4) return false
@@ -109,7 +118,25 @@ export function MuseumGallery({
 
     if (sortBy === 'default') return list
     return [...list].sort((a, b) => b.flavorProfile[sortBy] - a.flavorProfile[sortBy])
-  }, [category, onlyWishlist, roastFilter, search, sortBy, tempFilter, wishlistIds])
+  }, [category, difficultyFilter, onlyWishlist, roastFilter, search, sortBy, tempFilter, wishlistIds])
+
+  const hasActiveFilter =
+    category !== '全部' ||
+    roastFilter !== 'all' ||
+    tempFilter !== 'all' ||
+    difficultyFilter !== 'all' ||
+    onlyWishlist ||
+    search.trim().length > 0
+
+  const resetAllFilters = () => {
+    setCategory('全部')
+    setRoastFilter('all')
+    setTempFilter('all')
+    setDifficultyFilter('all')
+    setSortBy('default')
+    setOnlyWishlist(false)
+    setSearch('')
+  }
 
   const openModal = (coffee: CoffeeExhibit) => {
     setModalServings(1)
@@ -210,6 +237,25 @@ export function MuseumGallery({
                 {t.label}
               </button>
             ))}
+
+            <span style={{ opacity: 0.25, alignSelf: 'center' }}>|</span>
+
+            {[
+              { id: 'all' as const, label: '全部难度' },
+              { id: '新手友好' as const, label: '新手友好' },
+              { id: '进阶风味' as const, label: '进阶风味' },
+              { id: '专业品鉴' as const, label: '专业品鉴' },
+            ].map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className={`mood-pill ${difficultyFilter === d.id ? 'active' : ''}`}
+                style={{ padding: '4px 11px', fontSize: '0.78rem' }}
+                onClick={() => setDifficultyFilter(d.id)}
+              >
+                {d.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -238,12 +284,28 @@ export function MuseumGallery({
             id="gallery-search-input"
             type="search"
             className="search-input"
-            placeholder="搜索风味、产区或器具（如 虹吸 / 云南 / 蓝山 / 阿芙佳朵）"
+            placeholder="搜索风味、产区或器具（如 越南 / 也门 / 弗拉佩 / 虹吸）"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
+
+      {hasActiveFilter && (
+        <div className="gallery-filter-summary">
+          <span className="mono" style={{ fontSize: '0.8rem', color: 'var(--espresso-600)' }}>
+            当前匹配展示 {filtered.length} / {COFFEE_EXHIBITS.length} 款馆藏
+          </span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+            onClick={resetAllFilters}
+          >
+            × 清空全部筛选
+          </button>
+        </div>
+      )}
 
       <div className="gallery-grid">
         {filtered.map((coffee) => {
@@ -362,14 +424,7 @@ export function MuseumGallery({
           <button
             type="button"
             className="btn btn-outline"
-            onClick={() => {
-              setCategory('全部')
-              setRoastFilter('all')
-              setTempFilter('all')
-              setSortBy('default')
-              setOnlyWishlist(false)
-              setSearch('')
-            }}
+            onClick={resetAllFilters}
           >
             重置全部筛选
           </button>
@@ -607,8 +662,18 @@ function SpecimenModal({
     tastePreset: TasteCustomizePreset
   ) => void
 }) {
+  const [copiedRecipe, setCopiedRecipe] = useState(false)
   const scaled = scaleRecipe(coffee, servings, tastePreset)
   const extra = EXHIBIT_EXTRAS[coffee.id]
+
+  const handleCopyRecipe = async () => {
+    const ok = await copyTextToClipboard(formatRecipeShareText(coffee, servings, tastePreset))
+    if (ok) {
+      playGentleChime('tick')
+      setCopiedRecipe(true)
+      window.setTimeout(() => setCopiedRecipe(false), 2200)
+    }
+  }
 
   return (
     <div
@@ -792,15 +857,25 @@ function SpecimenModal({
               </div>
             </div>
 
-            <button
-              id="modal-start-brew-btn"
-              type="button"
-              className="btn btn-primary btn-lg"
-              style={{ width: '100%', marginTop: 18 }}
-              onClick={() => onStartBrew(coffee, servings, tastePreset)}
-            >
-              按此参数进入冲煮工坊（{coffee.steps.length} 步）
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
+              <button
+                id="modal-start-brew-btn"
+                type="button"
+                className="btn btn-primary btn-lg"
+                style={{ width: '100%' }}
+                onClick={() => onStartBrew(coffee, servings, tastePreset)}
+              >
+                按此参数进入冲煮工坊（{coffee.steps.length} 步）
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                style={{ width: '100%' }}
+                onClick={handleCopyRecipe}
+              >
+                {copiedRecipe ? '✓ 已复制完整冲煮配方到剪贴板' : '复制文字配方分享给好友'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

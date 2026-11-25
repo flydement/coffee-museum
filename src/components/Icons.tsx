@@ -282,6 +282,19 @@ export function CupEmblem({
     )
   }
 
+  if (method === 'phin') {
+    return (
+      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="13" y="8" width="14" height="10" rx="1.5" fill="#D5CCC0" stroke="#3E2A20" strokeWidth="1.7" />
+        <line x1="10" y1="18" x2="30" y2="18" stroke="#3E2A20" strokeWidth="2" strokeLinecap="round" />
+        <line x1="17" y1="6" x2="23" y2="6" stroke="#3E2A20" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M12.5 19H27.5L26 33C25.9 34.1 25 35 23.8 35H16.2C15 35 14.1 34.1 14 33L12.5 19Z" fill="#FCF9F3" stroke="#3E2A20" strokeWidth="1.7" />
+        <path d="M13.8 27H26.2L25.5 33.2C25.4 33.8 24.8 34.2 24 34.2H16C15.2 34.2 14.6 33.8 14.5 33.2L13.8 27Z" fill={liquid} />
+        <rect x="13.4" y="23.5" width="13.2" height="4" rx="1" fill={crema} />
+      </svg>
+    )
+  }
+
   return (
     <svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
       <path d="M8 14H27V22C27 27.523 22.523 32 17 32C11.477 32 8 27.523 8 22V14Z" fill={liquid} stroke="#3E2A20" strokeWidth="1.8" />

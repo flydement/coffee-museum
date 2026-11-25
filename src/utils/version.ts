@@ -7,5 +7,5 @@
  * - Major feature or architectural releases:
  *   increment major version (v6.0, v7.0, ...).
  */
-export const APP_VERSION = 'v5.0'
-export const APP_SEMVER = '5.0.0'
+export const APP_VERSION = 'v5.1'
+export const APP_SEMVER = '5.1.0'

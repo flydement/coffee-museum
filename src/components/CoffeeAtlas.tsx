@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
+  BREW_TROUBLESHOOT_CASES,
   COFFEE_ORIGINS,
   COFFEE_TRIVIA_QUESTIONS,
   PROCESS_GUIDES,
@@ -18,7 +19,7 @@ interface CoffeeAtlasProps {
   onFinishQuiz: (score: number, total: number) => void
 }
 
-type AtlasSection = 'map' | 'craft' | 'quiz'
+type AtlasSection = 'map' | 'craft' | 'troubleshoot' | 'quiz'
 
 function pickQuizRound(count = 5): CoffeeTriviaQuestion[] {
   const pool = [...COFFEE_TRIVIA_QUESTIONS]
@@ -39,6 +40,7 @@ export function CoffeeAtlas({
   const [selectedOriginId, setSelectedOriginId] = useState<string>(COFFEE_ORIGINS[0].id)
   const [selectedRoast, setSelectedRoast] = useState<number>(2)
   const [selectedProcessId, setSelectedProcessId] = useState<string>(PROCESS_GUIDES[0].id)
+  const [selectedCaseId, setSelectedCaseId] = useState<string>(BREW_TROUBLESHOOT_CASES[0].id)
 
   // Quiz state
   const [roundQuestions, setRoundQuestions] = useState<CoffeeTriviaQuestion[]>(() =>
@@ -75,6 +77,18 @@ export function CoffeeAtlas({
   const activeProcess = useMemo(
     () => PROCESS_GUIDES.find((p) => p.id === selectedProcessId) ?? PROCESS_GUIDES[0],
     [selectedProcessId]
+  )
+
+  const activeTroubleshoot = useMemo(
+    () =>
+      BREW_TROUBLESHOOT_CASES.find((item) => item.id === selectedCaseId) ??
+      BREW_TROUBLESHOOT_CASES[0],
+    [selectedCaseId]
+  )
+
+  const practiceExhibit = useMemo(
+    () => COFFEE_EXHIBITS.find((c) => c.id === activeTroubleshoot.practiceExhibitId),
+    [activeTroubleshoot]
   )
 
   const processExhibits = useMemo(
@@ -139,6 +153,7 @@ export function CoffeeAtlas({
           {[
             { id: 'map' as const, label: '世界风味地图' },
             { id: 'craft' as const, label: '烘焙与处理法' },
+            { id: 'troubleshoot' as const, label: '冲煮诊断室' },
             { id: 'quiz' as const, label: `趣味品鉴挑战${bestQuizScore > 0 ? ` (${bestQuizScore}/5)` : ''}` },
           ].map((tab) => (
             <button
@@ -558,7 +573,102 @@ export function CoffeeAtlas({
         </div>
       )}
 
-      {/* SECTION 3: Playful Sommelier Trivia Quiz */}
+      {/* SECTION 3: Interactive Barista Troubleshooter */}
+      {section === 'troubleshoot' && (
+        <section className="atlas-craft-card" aria-label="咖啡师冲煮翻车诊断室">
+          <p className="eyebrow">BARISTA TROUBLESHOOTER · 冲煮味道诊断与调参指南</p>
+          <h2 className="section-heading" style={{ fontSize: '1.42rem', marginBottom: 8 }}>
+            刚冲出的咖啡不够理想？点选口感症状获取纠偏方案
+          </h2>
+          <p className="section-lead" style={{ marginBottom: 18 }}>
+            每次只微调一个变量（研磨度、水温或粉水比），很快就能稳定复刻咖啡馆级甜润出品。
+          </p>
+
+          <div className="troubleshoot-symptom-grid">
+            {BREW_TROUBLESHOOT_CASES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`scenario-card ${activeTroubleshoot.id === item.id ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedCaseId(item.id)
+                  playGentleChime('tick')
+                }}
+              >
+                <span className="mono" style={{ fontSize: '0.68rem', color: 'var(--brass-700)' }}>
+                  {item.englishTag.split('·')[0].trim()}
+                </span>
+                <span className="scenario-card-title">{item.symptom}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="roast-detail-box" style={{ marginTop: 18 }}>
+            <div>
+              <span className="tag tag-brass mono" style={{ marginBottom: 10 }}>
+                {activeTroubleshoot.englishTag}
+              </span>
+              <h3 className="exhibit-title" style={{ fontSize: '1.25rem', marginBottom: 8 }}>
+                {activeTroubleshoot.symptom}
+              </h3>
+              <p style={{ margin: '0 0 10px', fontSize: '0.94rem', color: 'var(--espresso-900)' }}>
+                <strong>杯测诊断：</strong>
+                {activeTroubleshoot.diagnosis}
+              </p>
+              <div className="specimen-curator-box" style={{ margin: '10px 0 16px' }}>
+                <strong>常见诱因：</strong>
+                {activeTroubleshoot.rootCause}
+              </div>
+
+              {practiceExhibit && (
+                <div className="atlas-mini-exhibit">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <CupEmblem
+                      method={practiceExhibit.method}
+                      liquid={practiceExhibit.palette.liquid}
+                      crema={practiceExhibit.palette.crema}
+                    />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--brass-700)', fontWeight: 600 }}>
+                        推荐标准练手豆单
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '0.92rem' }}>
+                        {practiceExhibit.name}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => onStartBrew(practiceExhibit)}
+                  >
+                    进入调参实操 →
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--espresso-800)' }}>
+                ✦ 咖啡师三步纠偏调参：
+              </div>
+              {activeTroubleshoot.fixes.map((fix, idx) => (
+                <div key={fix.lever} className="troubleshoot-fix-card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span className="tag tag-sage mono">0{idx + 1}</span>
+                    <strong style={{ fontSize: '0.92rem' }}>{fix.lever}</strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--espresso-600)', lineHeight: 1.6 }}>
+                    {fix.action}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* SECTION 4: Playful Sommelier Trivia Quiz */}
       {section === 'quiz' && (
         <section className="quiz-stage-card" aria-label="咖啡品鉴师趣味问答">
           {!quizFinished ? (

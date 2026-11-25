@@ -2231,6 +2231,104 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   box-shadow: var(--shadow-soft);
 }
 
+/* ==================== v5.1 Timeline, Troubleshooter & Archive Editor ==================== */
+.gallery-filter-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -12px 0 18px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  background: var(--paper-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.brew-timeline-box {
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--border-subtle);
+}
+
+.brew-timeline-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: var(--espresso-600);
+  margin-bottom: 8px;
+}
+
+.brew-timeline-bar {
+  display: flex;
+  gap: 5px;
+  width: 100%;
+}
+
+.brew-timeline-seg {
+  min-width: 34px;
+  padding: 6px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--paper-surface);
+  color: var(--espresso-800);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: 0.72rem;
+  line-height: 1.15;
+  transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.brew-timeline-seg small {
+  font-size: 0.64rem;
+  opacity: 0.75;
+}
+
+.brew-timeline-seg:hover {
+  transform: translateY(-1px);
+  border-color: var(--brass-600);
+}
+
+.brew-timeline-seg.done {
+  background: var(--sage-100);
+  border-color: rgba(79, 103, 83, 0.35);
+  color: var(--sage-600);
+}
+
+.brew-timeline-seg.active {
+  background: rgba(199, 147, 85, 0.22);
+  border-color: var(--brass-600);
+  color: var(--brass-700);
+  font-weight: 700;
+}
+
+.troubleshoot-symptom-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.troubleshoot-fix-card {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--paper-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.archive-inline-editor {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--border-brass);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2289,8 +2387,9 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .roast-spectrum-bar {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .roast-spectrum-bar,
+  .troubleshoot-symptom-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .taste-preset-grid {
@@ -2392,7 +2491,8 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   .exhibit-grid,
   .gallery-grid,
   .archive-grid,
-  .scenario-strip {
+  .scenario-strip,
+  .troubleshoot-symptom-grid {
     grid-template-columns: 1fr;
   }
 
