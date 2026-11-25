@@ -12,6 +12,8 @@ import {
   renderPostcardDataUrl,
 } from '../utils/exportCard'
 import {
+  copyTextToClipboard,
+  formatRecipeShareText,
   formatSeconds,
   playGentleChime,
   scaleRecipe,
@@ -51,6 +53,7 @@ export function BrewStudio({
   const [muted, setMuted] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [prepChecks, setPrepChecks] = useState<string[]>([])
+  const [copiedRecipe, setCopiedRecipe] = useState(false)
 
   // Completion tasting ceremony state
   const [rating, setRating] = useState(5)
@@ -208,6 +211,20 @@ export function BrewStudio({
     return remainingSec + upcoming
   }, [coffee.steps, remainingSec, stepIndex])
 
+  const totalTimedSec = useMemo(
+    () => Math.max(1, coffee.steps.reduce((sum, s) => sum + s.durationSec, 0)),
+    [coffee.steps]
+  )
+
+  const handleCopyStudioRecipe = async () => {
+    const ok = await copyTextToClipboard(formatRecipeShareText(coffee, servings, tastePreset))
+    if (ok) {
+      if (!muted) playGentleChime('tick')
+      setCopiedRecipe(true)
+      window.setTimeout(() => setCopiedRecipe(false), 2200)
+    }
+  }
+
   const currentYear = useMemo(() => new Date(completedAt).getFullYear(), [completedAt])
 
   const handleSaveArchive = () => {
@@ -350,6 +367,16 @@ export function BrewStudio({
           >
             <SoundIcon muted={muted} size={16} />
             <span>{muted ? '已静音' : '提示音'}</span>
+          </button>
+
+          <button
+            id="studio-copy-recipe-btn"
+            type="button"
+            className={`icon-pill-btn ${copiedRecipe ? 'active' : ''}`}
+            onClick={handleCopyStudioRecipe}
+            title="将当前杯数与口味档的完整参数复制为文字配方"
+          >
+            <span>{copiedRecipe ? '✓ 已复制配方' : '复制配方'}</span>
           </button>
         </div>
       </div>
@@ -619,9 +646,41 @@ export function BrewStudio({
               </div>
             </div>
 
+            <div className="brew-timeline-box" aria-label="萃取节奏总览时间轴">
+              <div className="brew-timeline-head">
+                <span>全程萃取时间轴</span>
+                <span className="mono">
+                  总计时 {formatSeconds(totalTimedSec)} · 剩余 {formatSeconds(totalRemainingSec)}
+                </span>
+              </div>
+              <div className="brew-timeline-bar">
+                {coffee.steps.map((s, idx) => {
+                  const weight = s.durationSec > 0 ? Math.max(14, (s.durationSec / totalTimedSec) * 100) : 14
+                  const stepTarget = scaled.scaleTarget(s.targetWaterMl)
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className={`brew-timeline-seg ${
+                        idx < stepIndex ? 'done' : idx === stepIndex ? 'active' : ''
+                      }`}
+                      style={{ flexGrow: weight }}
+                      title={`${s.title} (${s.durationSec > 0 ? `${s.durationSec}s` : '准备'}${
+                        stepTarget ? ` · 目标 ${stepTarget}ml` : ''
+                      })`}
+                      onClick={() => goToStep(idx, false)}
+                    >
+                      <span className="mono">{s.durationSec > 0 ? `${s.durationSec}s` : '备'}</span>
+                      {stepTarget ? <small className="mono">{stepTarget}ml</small> : null}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             <div
               style={{
-                marginTop: 14,
+                marginTop: 12,
                 fontSize: '0.78rem',
                 color: 'var(--espresso-400)',
                 display: 'flex',
@@ -631,8 +690,7 @@ export function BrewStudio({
               }}
             >
               <span>
-                水温：{scaled.waterTempC}°C · 粉水比 {coffee.recipe.ratioLabel} · 预计总剩余{' '}
-                {formatSeconds(totalRemainingSec)}
+                水温：{scaled.waterTempC}°C · 粉水比 {coffee.recipe.ratioLabel}
               </span>
               <span>PC 快捷键：空格计时 · ←/→ 切步</span>
             </div>

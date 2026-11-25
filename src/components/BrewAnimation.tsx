@@ -624,7 +624,8 @@ export function BrewAnimation({
     const isDirty = coffee.method === 'dirty'
     const isLemon = coffee.method === 'iced'
     const isOrange = coffee.id === 'orange-c-cold-americano'
-    const isCreamTop = coffee.id === 'viennese-einspanner'
+    const isFrappe = coffee.id === 'greek-iced-frappe'
+    const isCreamTop = coffee.id === 'viennese-einspanner' || coffee.id === 'irish-velvet-coffee'
     const isAffogato = coffee.id === 'florence-affogato'
 
     return (
@@ -693,7 +694,7 @@ export function BrewAnimation({
                 width="116"
                 height={totalH + 14}
                 fill={
-                  isCreamTop
+                  isCreamTop || isFrappe
                     ? liquid
                     : isDirty
                       ? crema
@@ -707,9 +708,9 @@ export function BrewAnimation({
               />
 
               {/* Layered cascade */}
-              {isCreamTop && fillPercent > 80 ? (
+              {(isCreamTop || isFrappe) && fillPercent > 50 ? (
                 <path
-                  d={`M102 ${topY} H218 V${topY + 38} Q188 ${topY + 46} 160 ${topY + 40} T102 ${topY + 42} Z`}
+                  d={`M102 ${topY} H218 V${topY + (isFrappe ? 48 : 38)} Q188 ${topY + (isFrappe ? 56 : 46)} 160 ${topY + (isFrappe ? 50 : 40)} T102 ${topY + (isFrappe ? 52 : 42)} Z`}
                   fill={crema}
                   style={{ transition: 'all 0.5s ease' }}
                 />
@@ -733,7 +734,7 @@ export function BrewAnimation({
                 </g>
               )}
 
-              {isLemon && (
+              {isLemon && !isFrappe && (
                 <g transform="translate(186, 118) rotate(20)">
                   <circle
                     cx="0"
@@ -961,6 +962,98 @@ export function BrewAnimation({
         )}
 
         <SteamCurls show={step.hasSteam} y={92} />
+      </svg>
+    )
+  }
+
+  // 9. Vietnamese Phin Metal Drip Filter & Golden Whipped Egg-Cream Glass
+  if (coffee.method === 'phin') {
+    const isFinished = step.phase === 'finish'
+    const isWhipping = step.phase === 'milk'
+    const showPhinOnCup = !isFinished
+    const coffeeH = Math.round((Math.min(fillPercent, 65) / 100) * 102)
+    const coffeeY = 232 - coffeeH
+    const showEggFoam = isFinished || isWhipping
+
+    return (
+      <svg viewBox="0 0 320 270" width="100%" style={{ maxWidth: 340 }} aria-label="越南滴漏壶与河内蛋咖啡实时演示">
+        <defs>
+          <clipPath id="phin-cup-clip">
+            <path d="M112 138 H208 L198 228 C197 234 191 238 184 238 H136 C129 238 123 234 122 228 Z" />
+          </clipPath>
+        </defs>
+
+        {/* Warm Water Bath Saucer (Hanoi Classic) */}
+        <ellipse cx="160" cy="242" rx="76" ry="10" fill="#EFE7D8" stroke="#B88446" strokeWidth="2" />
+        <ellipse cx="160" cy="240" rx="58" ry="6" fill="#D6E6EE" opacity="0.6" />
+
+        {/* Lower Heatproof Glass Cup */}
+        <path
+          d="M112 138 H208 L198 228 C197 234 191 238 184 238 H136 C129 238 123 234 122 228 Z"
+          fill="rgba(255,255,255,0.68)"
+          stroke="#3E2A20"
+          strokeWidth="2.4"
+        />
+
+        <g clipPath="url(#phin-cup-clip)">
+          {/* Rich Vietnamese Dark Drip Coffee */}
+          <rect
+            x="108"
+            y={coffeeY}
+            width="104"
+            height={coffeeH + 12}
+            fill={liquid}
+            style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
+          />
+          {/* Lush Golden Whipped Egg-Yolk Cream Topping */}
+          {showEggFoam && (
+            <path
+              d={`M108 ${coffeeY - (isFinished ? 40 : 20)} H212 V${coffeeY + 6} Q184 ${coffeeY + 14} 160 ${coffeeY + 8} T108 ${coffeeY + 10} Z`}
+              fill={crema}
+              style={{ transition: 'all 0.5s ease' }}
+            />
+          )}
+          {/* Cocoa dust garnish on finish */}
+          {isFinished && (
+            <g fill="#5C3118" opacity="0.72">
+              <circle cx="142" cy={coffeeY - 28} r="2.2" />
+              <circle cx="156" cy={coffeeY - 32} r="2.5" />
+              <circle cx="170" cy={coffeeY - 27} r="2.1" />
+              <circle cx="162" cy={coffeeY - 22} r="1.9" />
+              <circle cx="149" cy={coffeeY - 21} r="1.8" />
+            </g>
+          )}
+        </g>
+
+        {/* Slow Rich Drip Drop from Phin Filter */}
+        {showPhinOnCup && (activePour || step.phase === 'bloom' || step.phase === 'extract') && (
+          <circle className="svg-drip" cx="160" cy="140" r="3.8" fill={liquid} />
+        )}
+
+        {/* Stainless Steel Vietnamese Phin Filter Sitting on Rim */}
+        {showPhinOnCup && (
+          <g>
+            {/* Base Flange Plate */}
+            <rect x="102" y="131" width="116" height="7" rx="3.5" fill="#C9C0B3" stroke="#3E2A20" strokeWidth="1.8" />
+            {/* Phin Chamber */}
+            <path
+              d="M124 72 H196 L190 131 H130 Z"
+              fill="#DFD8CC"
+              stroke="#3E2A20"
+              strokeWidth="2.2"
+              strokeLinejoin="round"
+            />
+            {/* Metallic sheen highlight */}
+            <line x1="136" y1="80" x2="140" y2="124" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" opacity="0.6" />
+            {/* Side little wire handle */}
+            <path d="M194 86 H208 C214 86 216 92 215 99 L212 114 H192" stroke="#3E2A20" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+            {/* Lid on top */}
+            <rect x="120" y="65" width="80" height="7" rx="3.5" fill="#C9C0B3" stroke="#3E2A20" strokeWidth="1.8" />
+            <rect x="152" y="57" width="16" height="8" rx="3" fill="#463125" />
+          </g>
+        )}
+
+        <SteamCurls show={step.hasSteam} y={showPhinOnCup ? 54 : 112} />
       </svg>
     )
   }

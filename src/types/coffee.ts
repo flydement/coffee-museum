@@ -11,6 +11,7 @@ export type BrewMethod =
   | 'aeropress'
   | 'syphon'
   | 'turkish'
+  | 'phin'
 
 export type DrinkCategory = '手冲黑咖' | '意式奶咖' | '冰爽特调' | '复古器具'
 

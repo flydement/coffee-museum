@@ -171,6 +171,66 @@ export function formatSeconds(totalSec: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 }
 
+export function formatRecipeShareText(
+  coffee: CoffeeExhibit,
+  servings = 1,
+  tastePreset: TasteCustomizePreset = 'standard'
+): string {
+  const scaled = scaleRecipe(coffee, servings, tastePreset)
+  const presetLabel =
+    TASTE_PRESET_OPTIONS.find((p) => p.id === tastePreset)?.label ?? '馆藏标准'
+  const lines = [
+    `☕ 拾光咖啡博物馆 · ${coffee.exhibitNo} ${coffee.name} (${coffee.englishName})`,
+    `产区：${coffee.origin} | 烘焙：${coffee.roast} | 器具：${coffee.methodLabel}`,
+    `风味：${coffee.flavorNotes.join(' · ')}`,
+    `——— 冲煮参数（${servings} 杯 · ${presetLabel}）———`,
+    `• 咖啡粉量：${scaled.doseGrams} g`,
+    `• 目标液量：${scaled.waterMl} ml`,
+    ...(scaled.milkMl
+      ? [`• 牛奶/辅料：${scaled.milkMl} ml（${coffee.recipe.milkLabel ?? '辅料'}）`]
+      : []),
+    ...(scaled.iceGrams ? [`• 冰块用量：${scaled.iceGrams} g`] : []),
+    `• 建议水温：${scaled.waterTempC} °C`,
+    `• 研磨参考：${coffee.recipe.grindDesc}`,
+    `——— 分步冲煮节奏 ———`,
+    ...coffee.steps.map((s, idx) => {
+      const target = scaled.scaleTarget(s.targetWaterMl)
+      const meta = [
+        s.durationSec > 0 ? `${s.durationSec}s` : '准备',
+        target ? `累计 ${target}ml` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ')
+      return `${idx + 1}. ${s.title}（${meta}）：${s.instruction}`
+    }),
+  ]
+  return lines.join('\n')
+}
+
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    // Fallback below
+  }
+  try {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    return ok
+  } catch {
+    return false
+  }
+}
+
 export function computeCuratorBadges(
   records: SavedBrewRecord[],
   allCoffees: CoffeeExhibit[],

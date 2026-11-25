@@ -50,6 +50,19 @@ export interface ExhibitEditorialExtra {
   fortune: string
 }
 
+export interface BrewTroubleshootCase {
+  id: string
+  symptom: string
+  englishTag: string
+  diagnosis: string
+  rootCause: string
+  fixes: {
+    lever: string
+    action: string
+  }[]
+  practiceExhibitId: string
+}
+
 export const COFFEE_ORIGINS: OriginRegion[] = [
   {
     id: 'ethiopia',
@@ -80,6 +93,36 @@ export const COFFEE_ORIGINS: OriginRegion[] = [
     story:
       '肯尼亚独有的 72 小时双重水洗发酵工艺搭配富含磷酸盐的火山红土，赋予 SL28 品种炸裂般的黑莓与红酒酸质。',
     matchKeywords: ['肯尼亚'],
+  },
+  {
+    id: 'yemen',
+    name: '也门 · 巴尼马塔里梯田',
+    englishName: 'Yemen · Bani Mattar',
+    continent: '亚洲',
+    x: 556,
+    y: 174,
+    altitude: '2,000 – 2,400 m',
+    climate: '干旱高海拔石造梯田',
+    varieties: '古老也门原生种 (Mattari)',
+    signatureFlavor: '天然黑可可 · 无花果干 · 红酒肉桂',
+    story:
+      '十五世纪起便经红海摩卡港销往欧洲与奥斯曼帝国的咖啡圣地，“摩卡”一词正是源自也门摩卡港对天然黑巧风味豆的美称。',
+    matchKeywords: ['也门'],
+  },
+  {
+    id: 'vietnam',
+    name: '越南 · 大叻与河内咖啡馆',
+    englishName: 'Vietnam · Da Lat & Hanoi',
+    continent: '亚洲',
+    x: 702,
+    y: 190,
+    altitude: '1,400 – 1,650 m',
+    climate: '中南部清凉高原与河内法式文化交融',
+    varieties: '大叻阿拉比卡 × 精品罗布斯塔拼配',
+    signatureFlavor: '焦糖炼乳 · 提拉米苏蛋奶霜 · 深烘可可',
+    story:
+      '全球第二大咖啡产国。从街头慢滴的金属 Phin 滴漏壶，到 1946 年诞生的河内蛋咖啡，形成了独树一帜的浓甜慢生活美学。',
+    matchKeywords: ['越南'],
   },
   {
     id: 'yunnan',
@@ -214,7 +257,7 @@ export const COFFEE_ORIGINS: OriginRegion[] = [
     signatureFlavor: '黄金虎斑油脂 · 绿豆蔻香料 · 绵密奶霜',
     story:
       '虽然不生长咖啡树，但伊斯坦布尔的铜壶、米兰的 9 Bar 意式浓缩与摩卡壶、维也纳的奶油雪顶，共同塑造了人类近五百年的咖啡馆浪漫。',
-    matchKeywords: ['意大利', '西班牙', '洪都拉斯'],
+    matchKeywords: ['意大利', '西班牙', '洪都拉斯', '希腊', '爱尔兰'],
   },
 ]
 
@@ -463,6 +506,129 @@ export const COFFEE_TRIVIA_QUESTIONS: CoffeeTriviaQuestion[] = [
     explanation:
       'Affogato 意为“淹没”——指一颗冰凉扎实的香草 Gelato 被刚萃出的滚烫双份意式浓缩缓缓浇淋包裹，冰火交融。',
   },
+  {
+    id: 'q13',
+    category: '咖啡历史',
+    question: '人们常说的“摩卡（Mocha）”最初其实并不是指巧克力酱，而是源自哪里？',
+    options: [
+      '意大利米兰的一家百年甜品店',
+      '15 世纪也门红海边著名的咖啡贸易港口“摩卡港”',
+      '巴西最大的可可种植园名称',
+      '法国宫廷咖啡师的姓氏',
+    ],
+    correctIndex: 1,
+    explanation:
+      '也门高地古法日晒豆经摩卡港销往世界，天生自带迷人的黑巧克力与香料风味，后世才衍生出加入巧克力调制的“摩卡拿铁”。',
+  },
+  {
+    id: 'q14',
+    category: '世界风情',
+    question: '1946 年在河内诞生的越南国民名饮「河内蛋咖啡（Cà Phê Trứng）」，顶层如提拉米苏般绵密的金霜主要由什么打发而成？',
+    options: [
+      '蛋白与海盐',
+      '无菌蛋黄、甜炼乳与少许香草/蜂蜜',
+      '纯椰浆与椰糖',
+      '马斯卡彭芝士与淡奶油',
+    ],
+    correctIndex: 1,
+    explanation:
+      '当年鲜奶稀缺，调酒师阮文江用蛋黄与甜炼乳高速打发出蓬松香甜的黄金蛋奶霜，完美托住了越南 Phin 滴漏黑咖的醇厚苦香。',
+  },
+  {
+    id: 'q15',
+    category: '特调原理',
+    question: '制作经典「爱尔兰咖啡」时，往滚烫黑咖中先充分融化红糖除了调味，还有一个巧妙的物理作用是？',
+    options: [
+      '让咖啡迅速冷却结冰',
+      '提高下层咖啡液密度，让顶层冰凉淡奶油稳稳漂浮不下沉',
+      '中和掉全部咖啡因',
+      '让杯壁自动产生气泡',
+    ],
+    correctIndex: 1,
+    explanation:
+      '糖分溶入咖啡提高了下层液体比重，配合勺背轻缓引流，即可让 6 分发冰凉动物鲜奶油如雪白浮云般平整漂浮在热咖之上。',
+  },
+]
+
+export const BREW_TROUBLESHOOT_CASES: BrewTroubleshootCase[] = [
+  {
+    id: 'too-sour',
+    symptom: '入口尖酸刺激、发涩空洞',
+    englishTag: 'UNDER-EXTRACTION · 萃取不足',
+    diagnosis: '酸味物质最先溶出，而甜感与醇厚尚未充分萃出就结束了萃取。',
+    rootCause: '研磨过粗、水温偏低、闷蒸不充分或总注水时间过短（如 V60 不足 1 分 45 秒）。',
+    fixes: [
+      { lever: '调细研磨', action: '把磨豆机调细 1–2 格，增加粉水接触面积并减缓下水速度。' },
+      { lever: '提高水温', action: '浅烘豆建议提高至 92–93°C，充分打开果胶甜感柔化尖酸。' },
+      { lever: '延长闷蒸与分段', action: '确保 30–35 秒充分排气闷蒸，分 2–3 段绕圈注水延长萃取至 2 分 15 秒。' },
+    ],
+    practiceExhibitId: 'yirgacheffe-v60',
+  },
+  {
+    id: 'too-bitter',
+    symptom: '焦苦发干、舌根锁喉涩感',
+    englishTag: 'OVER-EXTRACTION · 过度萃取',
+    diagnosis: '高温与过长时间将尾段大分子苦涩木质素与焦苦味过度溶出。',
+    rootCause: '深烘豆水温过高（>90°C）、研磨过细、细粉堵塞滤纸或冲煮时间超过 3 分钟。',
+    fixes: [
+      { lever: '降低水温', action: '中深/深烘豆直接降温至 85–88°C，苦感会立刻变得柔和回甘。' },
+      { lever: '调粗研磨', action: '调粗 1–2 格减少细粉堵塞，让下水通畅干净。' },
+      { lever: '提前截流收口', action: '尾段滤杯尚留少许残液时果断移杯，舍弃最苦涩的末尾 10ml 尾水。' },
+    ],
+    practiceExhibitId: 'mandheling-nel',
+  },
+  {
+    id: 'too-watery',
+    symptom: '水感寡淡、香气薄弱没层次',
+    englishTag: 'LOW STRENGTH · 浓度偏低 / 通道效应',
+    diagnosis: '粉水比过大或水流直接沿滤纸边缘流走，没有真正穿过咖啡粉层。',
+    rootCause: '注水冲刷滤纸壁形成“旁路通道”、粉量偏少，或咖啡豆已烘焙超过 2 个月失香。',
+    fixes: [
+      { lever: '缩小粉水比', action: '从 1:16 收紧至 1:14.5–1:15，或直接使用工坊「更浓郁醇厚」口味档。' },
+      { lever: '专注中心绕圈', action: '水流始终保持在粉床中央三分之二区域，绝不直接冲洗滤纸边缘。' },
+      { lever: '检查新鲜度', action: '选用烘焙后 7–35 天内的新鲜豆，现磨现冲香气提升立竿见影。' },
+    ],
+    practiceExhibitId: 'guatemala-antigua-chemex',
+  },
+  {
+    id: 'muddy-flavor',
+    symptom: '口感浑浊、杯底有泥沙杂味',
+    englishTag: 'FINES MIGRATION · 细粉过多 / 过度搅动',
+    diagnosis: '过多极细粉穿过金属网或堵塞滤纸，带来浑浊的干涩与沉闷感。',
+    rootCause: '磨豆机刀盘均匀度不足、注水水流过猛剧烈冲翻粉床，或法压壶压杆压得太狠。',
+    fixes: [
+      { lever: '放低注水高度', action: '壶嘴尽量贴近液面 3–4cm 轻柔注水，减少把细粉冲到底部滤孔的扰动。' },
+      { lever: '法压壶撇沫秘技', action: '浸泡后先破渣并撇掉表层浮沫，压网仅停在液面、杯底留 10ml 不倒。' },
+      { lever: '换用加厚滤纸', action: 'Chemex 或 V60 漂白滤纸能牢牢锁住细粉与杂油，干净度瞬间飙升。' },
+    ],
+    practiceExhibitId: 'costa-rica-french-press',
+  },
+  {
+    id: 'coarse-foam',
+    symptom: '奶泡大气泡粗糙、拉花沉底散开',
+    englishTag: 'MICROFOAM · 进气过久或奶温过高',
+    diagnosis: '打发奶泡时进气时间太长或未形成高速漩涡，未能将大气泡打碎融合。',
+    rootCause: '蒸汽棒长期浮在液面发出刺耳大泡声，或加热超过 70°C 破坏牛奶蛋白质。',
+    fixes: [
+      { lever: '精准控制进气 3–5 秒', action: '澳白仅轻听“嘶嘶”纸撕声 3 秒，随后立刻将蒸汽棒埋深 1cm 形成旋涡打绵。' },
+      { lever: '控温 55–62°C 停机', action: '手贴拉花缸感到温热微烫立刻关蒸汽，这是乳糖最甜、光泽如镜面的温度。' },
+      { lever: '轻震摇匀再注入', action: '出缸后在桌面轻敲 2 下消大泡并画圈摇晃，让奶泡与热奶丝滑一体。' },
+    ],
+    practiceExhibitId: 'velvet-flat-white',
+  },
+  {
+    id: 'moka-burnt',
+    symptom: '摩卡壶剧烈喷溅、有金属焦糊味',
+    englishTag: 'MOKA OVERHEAT · 火力过大或冷水慢烤',
+    diagnosis: '下壶冷水加热太久把粉饼提前烤糊，且大火让过热蒸汽猛穿粉层。',
+    rootCause: '下壶装冷水起步、用力压实了粉槽，或火焰超出壶底且没有及时离火。',
+    fixes: [
+      { lever: '下壶直接用 85°C 热水', action: '大幅缩短加热时间，让咖啡粉在萃取前不被滚烫铝壶干烤发苦。' },
+      { lever: '切忌压粉 + 极小火', action: '粉槽自然装满轻刮平整即可；火焰绝不超过壶底，开盖观察慢涌如蜂蜜。' },
+      { lever: '冷毛巾立刻止萃', action: '咖啡刚开始发白即将咕嘟喷气前立刻离火，湿冷毛巾包下壶底 5 秒终止余热。' },
+    ],
+    practiceExhibitId: 'italian-moka-pot',
+  },
 ]
 
 export const EXHIBIT_EXTRAS: Record<string, ExhibitEditorialExtra> = {
@@ -585,6 +751,26 @@ export const EXHIBIT_EXTRAS: Record<string, ExhibitEditorialExtra> = {
     pairing: '橙皮玛德琳 / 轻乳酪三明治',
     tastingWindow: '先定格日落双色渐变，搅匀后大口唤醒满满维 C 活力',
     fortune: '如明媚橙光撞进清晨，今天的你元气满格、闪闪发光！',
+  },
+  'yemen-mocha-matari': {
+    pairing: '阿拉伯蜜枣 / 无花果坚果欧包',
+    tastingWindow: '从 65°C 品到 48°C，黑巧香料会逐渐化作迷人酒韵果甜',
+    fortune: '跨越千年的古老航线提醒你：坚持本色，时间终会赋予厚度。',
+  },
+  'irish-velvet-coffee': {
+    pairing: '黄油酥饼 (Shortbread) / 焦糖苹果派',
+    tastingWindow: '趁热不搅拌，穿过 2cm 冰滑鲜奶油直啜黑糖浓咖',
+    fortune: '外面哪怕风雨微凉，手心这一杯暖意足以温柔安放疲惫。',
+  },
+  'greek-iced-frappe': {
+    pairing: '开心果蜂蜜千层酥 / 柠檬海盐饼干',
+    tastingWindow: '趁 3cm 焦糖雪泡最绵厚时插吸管慢啜，越冰越清爽',
+    fortune: '给生活摇出一点绵密气泡，轻松愉悦就是最好的解题姿态。',
+  },
+  'hanoi-egg-coffee': {
+    pairing: '法棍脆片 / 焦糖布丁曲奇',
+    tastingWindow: '杯底坐温水保温，先舀一口金黄蛋奶霜再搅匀慢品',
+    fortune: '在物资匮乏里也能创造惊艳美味——创意总能点石成金。',
   },
 }
 
