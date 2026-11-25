@@ -284,7 +284,7 @@ export function MuseumGallery({
             id="gallery-search-input"
             type="search"
             className="search-input"
-            placeholder="搜索风味、产区或器具（如 越南 / 也门 / 弗拉佩 / 虹吸）"
+            placeholder="搜索豆名、产区或器具（如 越南 / 虹吸）"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -325,10 +325,10 @@ export function MuseumGallery({
               }
             >
               <div className="exhibit-top-row">
-                <span className="exhibit-no">
+                <span className="exhibit-no" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {coffee.exhibitNo} · {coffee.storyYear}
                 </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, whiteSpace: 'nowrap' }}>
                   {isUnlocked ? (
                     <span className="tag tag-sage">已点亮</span>
                   ) : (
