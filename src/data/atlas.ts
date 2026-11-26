@@ -63,6 +63,17 @@ export interface BrewTroubleshootCase {
   practiceExhibitId: string
 }
 
+export interface FlavorWheelFamily {
+  id: string
+  name: string
+  englishName: string
+  color: string
+  lightColor: string
+  subNotes: string[]
+  description: string
+  matchKeywords: string[]
+}
+
 export const COFFEE_ORIGINS: OriginRegion[] = [
   {
     id: 'ethiopia',
@@ -93,6 +104,36 @@ export const COFFEE_ORIGINS: OriginRegion[] = [
     story:
       '肯尼亚独有的 72 小时双重水洗发酵工艺搭配富含磷酸盐的火山红土，赋予 SL28 品种炸裂般的黑莓与红酒酸质。',
     matchKeywords: ['肯尼亚'],
+  },
+  {
+    id: 'rwanda',
+    name: '卢旺达 · 基伍湖千丘',
+    englishName: 'Rwanda · Lake Kivu',
+    continent: '非洲',
+    x: 500,
+    y: 235,
+    altitude: '1,750 – 2,000 m',
+    climate: '东非火山千丘湖岸高地',
+    varieties: '高海拔红波旁 (Red Bourbon)',
+    signatureFlavor: '血橙红茶 · 红醋栗 · 黑糖甜尾',
+    story:
+      '肥沃火山土壤与充沛湖风孕育出极具优雅红茶感与明亮浆果酸质的红波旁，是近年精品手冲与聪明杯的宝藏产区。',
+    matchKeywords: ['卢旺达'],
+  },
+  {
+    id: 'india',
+    name: '印度 · 马拉巴尔海岸',
+    englishName: 'India · Malabar Coast',
+    continent: '亚洲',
+    x: 622,
+    y: 196,
+    altitude: '1,100 – 1,450 m',
+    climate: '西南季风湿润海洋季风带',
+    varieties: '肯特 (Kent) / S795 季风豆',
+    signatureFlavor: '烤腰果 · 暖肉豆蔻 · 极低酸黑巧',
+    story:
+      '十九世纪帆船季风意外成就了独一无二的“季风风渍处理法”，使豆体金黄膨大、酸度归零、香料醇厚度惊艳。',
+    matchKeywords: ['印度'],
   },
   {
     id: 'yemen',
@@ -548,6 +589,106 @@ export const COFFEE_TRIVIA_QUESTIONS: CoffeeTriviaQuestion[] = [
     explanation:
       '糖分溶入咖啡提高了下层液体比重，配合勺背轻缓引流，即可让 6 分发冰凉动物鲜奶油如雪白浮云般平整漂浮在热咖之上。',
   },
+  {
+    id: 'q16',
+    category: '奇趣工艺',
+    question: '印度传奇豆种「季风马拉巴尔（Monsooned Malabar）」几乎毫无尖酸、口感如坚果丝绒，它的独特风味源自什么？',
+    options: [
+      '用海水直接煮熟咖啡豆',
+      '将生豆敞开置于印度洋湿润季风中吹拂数月完成自然风渍',
+      '在零下 30°C 冰川中冷冻半年',
+      '烘焙时加入大量印度咖喱粉',
+    ],
+    correctIndex: 1,
+    explanation:
+      '大航海时代运往欧洲的印度咖啡豆在季风海运中受湿气影响膨胀成金黄色，意外造就了极低酸、高醇厚与暖香料尾韵的独特风味。',
+  },
+  {
+    id: 'q17',
+    category: '器具秘技',
+    question: '使用「聪明杯（Clever Dripper）」冲煮精品咖啡时，世界冠军强烈推荐的防堵滤纸秘技是？',
+    options: [
+      '把咖啡粉磨成面粉一样细',
+      '采用“先注热水、再倒咖啡粉”顺序，避免细粉提前沉底堵死滤纸',
+      '不放滤纸直接倒进杯中',
+      '必须使用冰水浸泡 3 小时',
+    ],
+    correctIndex: 1,
+    explanation:
+      '先注水再入粉能避免水流冲击把细粉压实到滤纸底部，放流下水速度会快且均匀得多，萃取出的茶汤格外干净甜润。',
+  },
+  {
+    id: 'q18',
+    category: '茶咖特调',
+    question: '调制「宇治抹茶浓缩三重奏」时，手刷抹茶液的最佳水温是多少？',
+    options: ['100°C 刚滚开的沸水', '75 – 80°C 温热水', '0°C 冰水', '98°C 高温蒸汽'],
+    correctIndex: 1,
+    explanation:
+      '75–80°C 既能迅速把细微抹茶粉点打出绵密翡翠茶沫，又不会烫熟茶叶激发出苦涩味，保留最鲜甜的海苔旨味。',
+  },
+]
+
+export const FLAVOR_WHEEL_FAMILIES: FlavorWheelFamily[] = [
+  {
+    id: 'floral',
+    name: '白花茶韵',
+    englishName: 'Floral & Tea',
+    color: '#C7825A',
+    lightColor: 'rgba(199, 130, 90, 0.18)',
+    subNotes: ['茉莉白花', '橙花佛手柑', '金桂花蜜', '乌龙/伯爵茶感'],
+    description: '高海拔水洗浅烘原生种与瑰夏的迷人签名，入口清雅如高山茶汤。',
+    matchKeywords: ['茉莉', '橙花', '佛手柑', '桂花', '玫瑰', '乌龙', '红茶', '茶韵'],
+  },
+  {
+    id: 'citrus',
+    name: '柑橘莓果',
+    englishName: 'Citrus & Berry',
+    color: '#D49A3E',
+    lightColor: 'rgba(212, 154, 62, 0.18)',
+    subNotes: ['鲜榨脐橙', '黄柠檬青柠', '血橙西柚', '黑加仑覆盆子'],
+    description: '鲜亮活泼的有机果酸与果汁感，在冰手冲、爱乐压闪萃与柑橘特调中最具生命力。',
+    matchKeywords: ['柑', '橙', '柠檬', '柚', '莓', '桃', '黑加仑', '覆盆子', '醋栗'],
+  },
+  {
+    id: 'nutty',
+    name: '坚果焦糖',
+    englishName: 'Nutty & Caramel',
+    color: '#A96B38',
+    lightColor: 'rgba(169, 107, 56, 0.18)',
+    subNotes: ['烤榛果杏仁', '太妃糖布丁', '古法红糖', '烤腰果饼干'],
+    description: '中烘与中深烘梅纳焦糖化带来的温暖甜香，百搭且最受大众欢迎。',
+    matchKeywords: ['榛果', '杏仁', '核桃', '腰果', '焦糖', '太妃', '红糖', '黑糖', '坚果'],
+  },
+  {
+    id: 'cocoa',
+    name: '黑巧可可',
+    englishName: 'Dark Cocoa',
+    color: '#5C311B',
+    lightColor: 'rgba(92, 49, 27, 0.18)',
+    subNotes: ['75% 黑巧克力', '法芙娜生巧', '可可粉', '深烘奶油油脂'],
+    description: '深烘豆与意式高压萃取的醇厚骨架，微苦回甘、余韵厚重持久。',
+    matchKeywords: ['黑巧', '可可', '巧克力', '油脂'],
+  },
+  {
+    id: 'spice',
+    name: '香料草本',
+    englishName: 'Spice & Herbal',
+    color: '#54735A',
+    lightColor: 'rgba(84, 115, 90, 0.18)',
+    subNotes: ['鲜碾绿豆蔻', '雪松草本', '肉桂肉豆蔻', '宇治抹茶海苔'],
+    description: '极具地域风土辨识度的东方草本、中东香料与雨林木质调性。',
+    matchKeywords: ['豆蔻', '肉桂', '雪松', '草本', '香料', '抹茶', '海苔', '熟普'],
+  },
+  {
+    id: 'velvet',
+    name: '酒香奶韵',
+    englishName: 'Boozy & Creamy',
+    color: '#8E493C',
+    lightColor: 'rgba(142, 73, 60, 0.18)',
+    subNotes: ['雪莉橡木桶', '红酒无花果', '海盐奶霜', '香草提拉米苏'],
+    description: '冷萃桶发酵微醺感、丝绒鲜奶乳糖甜与意式甜品奶霜的治愈二重奏。',
+    matchKeywords: ['酒', '桶', '奶', '椰', '香草', '提拉米苏', '蛋霜', '麦芽'],
+  },
 ]
 
 export const BREW_TROUBLESHOOT_CASES: BrewTroubleshootCase[] = [
@@ -771,6 +912,26 @@ export const EXHIBIT_EXTRAS: Record<string, ExhibitEditorialExtra> = {
     pairing: '法棍脆片 / 焦糖布丁曲奇',
     tastingWindow: '杯底坐温水保温，先舀一口金黄蛋奶霜再搅匀慢品',
     fortune: '在物资匮乏里也能创造惊艳美味——创意总能点石成金。',
+  },
+  'monsoon-malabar-flannel': {
+    pairing: '腰果酥 / 肉桂黄油司康',
+    tastingWindow: '趁热 68°C 细品法兰绒保留的丰沛油脂与零酸丝滑',
+    fortune: '历经风浪的温柔最为从容，今天的一切都将如丝绸般顺遂。',
+  },
+  'sydney-piccolo-latte': {
+    pairing: '迷你可露丽 / 焦糖饼干',
+    tastingWindow: '58°C 出杯即饮，小杯浓缩与奶甜在两三口间恰到好处',
+    fortune: '轻巧而笃定的一小步，也能点亮整个午后的好心情。',
+  },
+  'uji-matcha-espresso-fusion': {
+    pairing: '抹茶铜锣烧 / 白巧克力曲奇',
+    tastingWindow: '先定格翡翠雪白琥珀三层，再自下而上搅匀畅饮',
+    fortune: '东方茶韵与意式热情可以同杯共生，跨界总能撞出惊喜。',
+  },
+  'rwanda-bourbon-clever': {
+    pairing: '柑橘磅蛋糕 / 蔓越莓玛芬',
+    tastingWindow: '放流完毕后略凉至 60°C，红醋栗与红茶甜感最为明亮',
+    fortune: '找到聪明省力的方法，好结果自然水到渠成。',
   },
 }
 

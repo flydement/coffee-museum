@@ -295,6 +295,18 @@ export function CupEmblem({
     )
   }
 
+  if (method === 'clever') {
+    return (
+      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <path d="M9 8H29L25.5 21H12.5L9 8Z" fill="#FCF9F3" stroke="#3E2A20" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M11 13H27L24.8 20.2H13.2L11 13Z" fill={liquid} opacity="0.88" />
+        <path d="M27.5 11H31C32.2 11 33 12 32.8 13.4L31.5 17.5H26.5" stroke="#3E2A20" strokeWidth="1.6" strokeLinecap="round" />
+        <circle cx="19" cy="22.5" r="2.2" fill="#B88446" stroke="#3E2A20" strokeWidth="1.2" />
+        <path d="M12.5 25H25.5V31.5C25.5 33.4 24 35 22 35H16C14 35 12.5 33.4 12.5 31.5V25Z" fill={liquid} stroke="#3E2A20" strokeWidth="1.7" />
+      </svg>
+    )
+  }
+
   return (
     <svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
       <path d="M8 14H27V22C27 27.523 22.523 32 17 32C11.477 32 8 27.523 8 22V14Z" fill={liquid} stroke="#3E2A20" strokeWidth="1.8" />

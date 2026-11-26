@@ -17,6 +17,8 @@ import {
   formatSeconds,
   playGentleChime,
   scaleRecipe,
+  speakBrewPrompt,
+  stopBrewSpeech,
   TASTE_PRESET_OPTIONS,
 } from '../utils/platform'
 import { BrewAnimation } from './BrewAnimation'
@@ -51,6 +53,7 @@ export function BrewStudio({
   const [isRunning, setIsRunning] = useState(false)
   const [autoAdvance, setAutoAdvance] = useState(true)
   const [muted, setMuted] = useState(false)
+  const [voiceGuide, setVoiceGuide] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [prepChecks, setPrepChecks] = useState<string[]>([])
   const [copiedRecipe, setCopiedRecipe] = useState(false)
@@ -182,6 +185,27 @@ export function BrewStudio({
 
   const currentTargetMl = scaled.scaleTarget(currentStep.targetWaterMl)
   const prevTargetMl = scaled.scaleTarget(prevStep?.targetWaterMl) ?? 0
+
+  // Speak step guidance aloud when hands-free voice guide is enabled
+  useEffect(() => {
+    if (!voiceGuide) {
+      stopBrewSpeech()
+      return
+    }
+    if (isComplete) {
+      speakBrewPrompt(`恭喜，你的${coffee.name}已冲煮完成，请趁热细品它的风味层次。`)
+      return
+    }
+    const targetPhrase = currentTargetMl ? `，目标累计液量 ${currentTargetMl} 毫升` : ''
+    const durPhrase = currentStep.durationSec > 0 ? `，计时 ${currentStep.durationSec} 秒` : ''
+    speakBrewPrompt(`第 ${stepIndex + 1} 步，${currentStep.title}${targetPhrase}${durPhrase}。`)
+  }, [coffee.name, currentStep.durationSec, currentStep.title, currentTargetMl, isComplete, stepIndex, voiceGuide])
+
+  useEffect(() => {
+    return () => {
+      stopBrewSpeech()
+    }
+  }, [])
 
   // Smooth real-time virtual scale readout during pouring steps
   const liveScaleMl =
@@ -356,6 +380,16 @@ export function BrewStudio({
             title="开启后倒计时归零将自动切换到下一步并继续计时，解放持壶双手"
           >
             <span>{autoAdvance ? '✓ 自动连贯跳步' : '手动切步'}</span>
+          </button>
+
+          <button
+            id="studio-voice-btn"
+            type="button"
+            className={`icon-pill-btn ${voiceGuide ? 'active' : ''}`}
+            onClick={() => setVoiceGuide((v) => !v)}
+            title="开启中文语音播报每一步骤与目标水量，彻底解放持壶双手"
+          >
+            <span>{voiceGuide ? '🎙 语音导引中' : '🎙 语音播报'}</span>
           </button>
 
           <button
