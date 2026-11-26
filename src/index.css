@@ -317,6 +317,13 @@ body::before {
   min-width: 102px;
 }
 
+.header-icon-only-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
 .icon-pill-btn:hover {
   border-color: var(--brass-600);
   color: var(--espresso-950);

@@ -29,10 +29,14 @@ interface BrewStudioProps {
   coffee: CoffeeExhibit
   servings: number
   tastePreset: TasteCustomizePreset
+  soundMuted: boolean
+  onToggleSoundMuted: () => void
   onChangeCoffee: (coffee: CoffeeExhibit) => void
   onChangeServings: (servings: number) => void
   onChangeTastePreset: (preset: TasteCustomizePreset) => void
   onSaveToArchive: (record: SavedBrewRecord) => void
+  onBrewComplete: () => void
+  onBrewRestart: () => void
   onGoArchive: () => void
   existingCount: number
 }
@@ -41,10 +45,14 @@ export function BrewStudio({
   coffee,
   servings,
   tastePreset,
+  soundMuted,
+  onToggleSoundMuted,
   onChangeCoffee,
   onChangeServings,
   onChangeTastePreset,
   onSaveToArchive,
+  onBrewComplete,
+  onBrewRestart,
   onGoArchive,
   existingCount,
 }: BrewStudioProps) {
@@ -52,7 +60,6 @@ export function BrewStudio({
   const [remainingSec, setRemainingSec] = useState(coffee.steps[0]?.durationSec ?? 0)
   const [isRunning, setIsRunning] = useState(false)
   const [autoAdvance, setAutoAdvance] = useState(true)
-  const [muted, setMuted] = useState(false)
   const [voiceGuide, setVoiceGuide] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [prepChecks, setPrepChecks] = useState<string[]>([])
@@ -69,29 +76,58 @@ export function BrewStudio({
   const prevStep = stepIndex > 0 ? coffee.steps[stepIndex - 1] : undefined
   const scaled = scaleRecipe(coffee, servings, tastePreset)
 
+  const remainingRef = useRef(remainingSec)
+  useEffect(() => {
+    remainingRef.current = remainingSec
+  }, [remainingSec])
+
   const goToStep = useCallback(
     (nextIndex: number, autoStart = false) => {
       if (nextIndex < 0) return
       if (nextIndex >= coffee.steps.length) {
+        remainingRef.current = 0
+        setRemainingSec(0)
         setIsRunning(false)
         setCompletedAt(new Date().toISOString())
         setIsComplete(true)
-        if (!muted) playGentleChime('complete')
+        onBrewComplete()
+        if (!soundMuted) playGentleChime('complete')
         return
       }
       const nextStepObj = coffee.steps[nextIndex]
+      remainingRef.current = nextStepObj.durationSec
       setIsComplete(false)
       setStepIndex(nextIndex)
       setRemainingSec(nextStepObj.durationSec)
       setIsRunning(Boolean(autoStart && nextStepObj.durationSec > 0))
     },
-    [coffee.steps, muted]
+    [coffee.steps, onBrewComplete, soundMuted]
   )
 
-  const remainingRef = useRef(remainingSec)
-  useEffect(() => {
-    remainingRef.current = remainingSec
-  }, [remainingSec])
+  const restartBrew = useCallback(() => {
+    const firstSec = coffee.steps[0]?.durationSec ?? 0
+    remainingRef.current = firstSec
+    setStepIndex(0)
+    setRemainingSec(firstSec)
+    setIsRunning(false)
+    setIsComplete(false)
+    setSavedRecord(null)
+    setRating(5)
+    setTastingNote('')
+    setPrepChecks([])
+    onBrewRestart()
+  }, [coffee.steps, onBrewRestart])
+
+  const toggleOrRestartTimer = useCallback(() => {
+    if (currentStep.durationSec <= 0) return
+    if (remainingRef.current <= 0) {
+      remainingRef.current = currentStep.durationSec
+      setRemainingSec(currentStep.durationSec)
+      setIsRunning(true)
+    } else {
+      setIsRunning((r) => !r)
+    }
+  }, [currentStep.durationSec])
 
   // Drift-free 1s interval (no remainingSec in deps; all state updates happen inside async timer callback)
   useEffect(() => {
@@ -107,11 +143,12 @@ export function BrewStudio({
             setIsRunning(false)
             setCompletedAt(new Date().toISOString())
             setIsComplete(true)
-            if (!muted) playGentleChime('complete')
+            onBrewComplete()
+            if (!soundMuted) playGentleChime('complete')
           } else {
             const nextStepObj = coffee.steps[nextIdx]
             remainingRef.current = nextStepObj.durationSec
-            if (!muted) playGentleChime('step')
+            if (!soundMuted) playGentleChime('step')
             setStepIndex(nextIdx)
             setRemainingSec(nextStepObj.durationSec)
             setIsRunning(nextStepObj.durationSec > 0)
@@ -119,7 +156,7 @@ export function BrewStudio({
         } else {
           setRemainingSec(0)
           setIsRunning(false)
-          if (!muted) playGentleChime('step')
+          if (!soundMuted) playGentleChime('step')
         }
       } else {
         const nextVal = current - 1
@@ -128,7 +165,7 @@ export function BrewStudio({
       }
     }, 1000)
     return () => window.clearInterval(timer)
-  }, [autoAdvance, coffee.steps, isComplete, isRunning, muted, stepIndex])
+  }, [autoAdvance, coffee.steps, isComplete, isRunning, onBrewComplete, soundMuted, stepIndex])
 
   // Keep mobile/tablet screen awake during active countdown
   useEffect(() => {
@@ -160,7 +197,7 @@ export function BrewStudio({
 
       if (e.code === 'Space' && currentStep.durationSec > 0) {
         e.preventDefault()
-        setIsRunning((r) => !r)
+        toggleOrRestartTimer()
       } else if (e.key === 'ArrowRight') {
         e.preventDefault()
         goToStep(stepIndex + 1, false)
@@ -171,7 +208,7 @@ export function BrewStudio({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [currentStep.durationSec, goToStep, isComplete, stepIndex])
+  }, [currentStep.durationSec, goToStep, isComplete, stepIndex, toggleOrRestartTimer])
 
   const stepDuration = currentStep.durationSec
   const stepProgress =
@@ -193,13 +230,28 @@ export function BrewStudio({
       return
     }
     if (isComplete) {
-      speakBrewPrompt(`恭喜，你的${coffee.name}已冲煮完成，请趁热细品它的风味层次。`)
+      const tempPhrase =
+        coffee.temperature === '冷饮'
+          ? '请趁冰爽细品它的风味层次。'
+          : coffee.temperature === '冷热分层'
+            ? '请不搅拌大口细品它的冷热层次。'
+            : '请趁热细品它的风味层次。'
+      speakBrewPrompt(`恭喜，你的${coffee.name}已冲煮完成，${tempPhrase}`)
       return
     }
     const targetPhrase = currentTargetMl ? `，目标累计液量 ${currentTargetMl} 毫升` : ''
     const durPhrase = currentStep.durationSec > 0 ? `，计时 ${currentStep.durationSec} 秒` : ''
     speakBrewPrompt(`第 ${stepIndex + 1} 步，${currentStep.title}${targetPhrase}${durPhrase}。`)
-  }, [coffee.name, currentStep.durationSec, currentStep.title, currentTargetMl, isComplete, stepIndex, voiceGuide])
+  }, [
+    coffee.name,
+    coffee.temperature,
+    currentStep.durationSec,
+    currentStep.title,
+    currentTargetMl,
+    isComplete,
+    stepIndex,
+    voiceGuide,
+  ])
 
   useEffect(() => {
     return () => {
@@ -222,7 +274,7 @@ export function BrewStudio({
       : null
 
   const togglePrepCheck = (item: string) => {
-    if (!muted) playGentleChime('tick')
+    if (!soundMuted) playGentleChime('tick')
     setPrepChecks((prev) =>
       prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
     )
@@ -243,7 +295,7 @@ export function BrewStudio({
   const handleCopyStudioRecipe = async () => {
     const ok = await copyTextToClipboard(formatRecipeShareText(coffee, servings, tastePreset))
     if (ok) {
-      if (!muted) playGentleChime('tick')
+      if (!soundMuted) playGentleChime('tick')
       setCopiedRecipe(true)
       window.setTimeout(() => setCopiedRecipe(false), 2200)
     }
@@ -395,12 +447,12 @@ export function BrewStudio({
           <button
             id="studio-mute-btn"
             type="button"
-            className="icon-pill-btn"
-            onClick={() => setMuted((m) => !m)}
-            title={muted ? '开启提示音' : '静音提示音'}
+            className={`icon-pill-btn ${soundMuted ? '' : 'active'}`}
+            onClick={onToggleSoundMuted}
+            title={soundMuted ? '开启全馆交互与计时提示音' : '静音全馆交互与计时提示音'}
           >
-            <SoundIcon muted={muted} size={16} />
-            <span>{muted ? '已静音' : '提示音'}</span>
+            <SoundIcon muted={soundMuted} size={16} />
+            <span>{soundMuted ? '已静音' : '提示音'}</span>
           </button>
 
           <button
@@ -570,7 +622,7 @@ export function BrewStudio({
                   <button
                     type="button"
                     className="btn btn-ghost"
-                    onClick={() => goToStep(0, false)}
+                    onClick={restartBrew}
                   >
                     重新冲煮一杯
                   </button>
@@ -610,7 +662,7 @@ export function BrewStudio({
                   <button
                     type="button"
                     className="btn btn-ghost"
-                    onClick={() => goToStep(0, false)}
+                    onClick={restartBrew}
                   >
                     再冲一杯
                   </button>
@@ -812,14 +864,7 @@ export function BrewStudio({
                       id="studio-timer-toggle-btn"
                       type="button"
                       className={`btn btn-sm ${isRunning ? 'btn-brass' : 'btn-primary'}`}
-                      onClick={() => {
-                        if (remainingSec === 0) {
-                          setRemainingSec(currentStep.durationSec)
-                          setIsRunning(true)
-                        } else {
-                          setIsRunning((r) => !r)
-                        }
-                      }}
+                      onClick={toggleOrRestartTimer}
                     >
                       {isRunning ? '暂停计时' : remainingSec === 0 ? '重新计时' : '开始计时'}
                     </button>
@@ -828,6 +873,7 @@ export function BrewStudio({
                       className="btn btn-outline btn-sm"
                       onClick={() => {
                         setIsRunning(false)
+                        remainingRef.current = currentStep.durationSec
                         setRemainingSec(currentStep.durationSec)
                       }}
                     >
@@ -836,7 +882,11 @@ export function BrewStudio({
                     <button
                       type="button"
                       className="btn btn-ghost btn-sm"
-                      onClick={() => setRemainingSec((s) => s + 10)}
+                      onClick={() => {
+                        const next = remainingRef.current + 10
+                        remainingRef.current = next
+                        setRemainingSec(next)
+                      }}
                     >
                       +10 秒
                     </button>

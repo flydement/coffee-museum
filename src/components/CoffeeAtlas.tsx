@@ -40,8 +40,10 @@ export function CoffeeAtlas({
   const [section, setSection] = useState<AtlasSection>('map')
   const [selectedOriginId, setSelectedOriginId] = useState<string>(COFFEE_ORIGINS[0].id)
   const [selectedWheelId, setSelectedWheelId] = useState<string>(FLAVOR_WHEEL_FAMILIES[0].id)
+  const [wheelExpanded, setWheelExpanded] = useState<boolean>(false)
   const [calcDose, setCalcDose] = useState<number>(15)
   const [calcRatio, setCalcRatio] = useState<number>(15)
+  const [calcEspressoRatio, setCalcEspressoRatio] = useState<number>(2.0)
   const [calcStyle, setCalcStyle] = useState<'pourover' | 'coldbrew' | 'espresso'>('pourover')
   const [selectedRoast, setSelectedRoast] = useState<number>(2)
   const [selectedProcessId, setSelectedProcessId] = useState<string>(PROCESS_GUIDES[0].id)
@@ -109,19 +111,45 @@ export function CoffeeAtlas({
   }, [activeWheelFamily])
 
   const calcResult = useMemo(() => {
-    const effectiveRatio = calcStyle === 'espresso' ? 2 : calcStyle === 'coldbrew' ? Math.min(calcRatio, 12) : calcRatio
+    const effectiveRatio =
+      calcStyle === 'espresso'
+        ? calcEspressoRatio
+        : calcStyle === 'coldbrew'
+          ? Math.min(Math.max(calcRatio, 8), 12)
+          : Math.min(Math.max(calcRatio, 12), 18)
     const totalWater = Math.round(calcDose * effectiveRatio)
     const bloomWater = calcStyle === 'pourover' ? Math.round(calcDose * 2.2) : 0
     const yieldMl =
       calcStyle === 'espresso'
-        ? Math.round(calcDose * 2)
+        ? totalWater
         : Math.max(0, Math.round(totalWater - calcDose * 2))
+    const espressoShotLabel =
+      calcEspressoRatio <= 1.7
+        ? '精萃 Ristretto'
+        : calcEspressoRatio >= 2.3
+          ? '长萃 Lungo'
+          : '标准 Espresso'
+    const espressoTimeWindow =
+      calcEspressoRatio <= 1.7
+        ? '22 – 26 秒'
+        : calcEspressoRatio >= 2.3
+          ? '28 – 34 秒'
+          : '25 – 30 秒'
     // Average Arabica caffeine ~11mg/g bean extracted at ~78%-88% efficiency
     const mgPerGram = calcStyle === 'coldbrew' ? 9.8 : calcStyle === 'espresso' ? 8.2 : 9.2
     const estCaffeineMg = Math.round(calcDose * mgPerGram)
     const dailyPct = Math.min(100, Math.round((estCaffeineMg / 400) * 100))
-    return { effectiveRatio, totalWater, bloomWater, yieldMl, estCaffeineMg, dailyPct }
-  }, [calcDose, calcRatio, calcStyle])
+    return {
+      effectiveRatio,
+      totalWater,
+      bloomWater,
+      yieldMl,
+      espressoShotLabel,
+      espressoTimeWindow,
+      estCaffeineMg,
+      dailyPct,
+    }
+  }, [calcDose, calcEspressoRatio, calcRatio, calcStyle])
 
   const processExhibits = useMemo(
     () =>
@@ -521,12 +549,14 @@ export function CoffeeAtlas({
                         style={{ cursor: 'pointer' }}
                         onClick={() => {
                           setSelectedWheelId(fam.id)
+                          setWheelExpanded(false)
                           playGentleChime('tick')
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault()
                             setSelectedWheelId(fam.id)
+                            setWheelExpanded(false)
                           }
                         }}
                       >
@@ -601,11 +631,42 @@ export function CoffeeAtlas({
                   ))}
                 </div>
 
-                <div style={{ fontSize: '0.82rem', fontWeight: 600, marginBottom: 10 }}>
-                  全馆吻合展品（共 {wheelExhibits.length} 款，精选展示前 5 款）：
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    marginBottom: 10,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                    全馆吻合展品（共 {wheelExhibits.length} 款
+                    {wheelExhibits.length > 5 && !wheelExpanded ? '，展示前 5 款' : ''}）：
+                  </span>
+                  {wheelExhibits.length > 5 && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{ padding: '4px 10px', fontSize: '0.76rem' }}
+                      onClick={() => setWheelExpanded((v) => !v)}
+                    >
+                      {wheelExpanded ? '收起列表 ↑' : `展开全部 ${wheelExhibits.length} 款 ↓`}
+                    </button>
+                  )}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {wheelExhibits.slice(0, 5).map((c) => (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    maxHeight: wheelExpanded ? 420 : 'none',
+                    overflowY: wheelExpanded ? 'auto' : 'visible',
+                    paddingRight: wheelExpanded ? 4 : 0,
+                  }}
+                >
+                  {(wheelExpanded ? wheelExhibits : wheelExhibits.slice(0, 5)).map((c) => (
                     <div key={c.id} className="atlas-mini-exhibit">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                         <CupEmblem
@@ -654,9 +715,9 @@ export function CoffeeAtlas({
 
             <div className="pill-row" style={{ marginBottom: 18 }}>
               {[
-                { id: 'pourover' as const, label: '手冲 / 聪明杯 / 法压 (1:14 – 1:17)' },
+                { id: 'pourover' as const, label: '手冲 / 聪明杯 / 法压 (1:12 – 1:18)' },
                 { id: 'coldbrew' as const, label: '冰滴 / 低温冷萃 (1:8 – 1:12)' },
-                { id: 'espresso' as const, label: '意式浓缩 Espresso (1:2)' },
+                { id: 'espresso' as const, label: '意式浓缩 Espresso (1:1.5 – 1:2.5)' },
               ].map((m) => (
                 <button
                   key={m.id}
@@ -666,6 +727,7 @@ export function CoffeeAtlas({
                     setCalcStyle(m.id)
                     if (m.id === 'pourover') setCalcRatio(15)
                     else if (m.id === 'coldbrew') setCalcRatio(10)
+                    else setCalcEspressoRatio(2.0)
                   }}
                 >
                   {m.label}
@@ -694,7 +756,26 @@ export function CoffeeAtlas({
                   />
                 </div>
 
-                {calcStyle !== 'espresso' && (
+                {calcStyle === 'espresso' ? (
+                  <div className="slider-item" style={{ marginBottom: 0 }}>
+                    <div className="slider-meta">
+                      <span className="slider-name">粉液比例 · {calcResult.espressoShotLabel}</span>
+                      <span className="slider-val">1 : {calcResult.effectiveRatio.toFixed(1)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1.5}
+                      max={2.5}
+                      step={0.1}
+                      value={calcEspressoRatio}
+                      className="museum-range"
+                      style={{
+                        background: `linear-gradient(to right, var(--brass-600) ${((calcEspressoRatio - 1.5) / 1) * 100}%, var(--paper-warm) ${((calcEspressoRatio - 1.5) / 1) * 100}%)`,
+                      }}
+                      onChange={(e) => setCalcEspressoRatio(Number(e.target.value))}
+                    />
+                  </div>
+                ) : (
                   <div className="slider-item" style={{ marginBottom: 0 }}>
                     <div className="slider-meta">
                       <span className="slider-name">粉水比例</span>
@@ -729,14 +810,26 @@ export function CoffeeAtlas({
                   <span className="spec-kpi-label">
                     {calcStyle === 'espresso' ? '目标浓缩液重' : '建议总注水量'}
                   </span>
-                  <span className="spec-kpi-value">{calcResult.totalWater} ml</span>
+                  <span className="spec-kpi-value">
+                    {calcStyle === 'espresso'
+                      ? `${calcResult.totalWater} g`
+                      : `${calcResult.totalWater} ml`}
+                  </span>
                 </div>
                 <div className="spec-kpi">
                   <span className="spec-kpi-label">
-                    {calcResult.bloomWater > 0 ? '建议闷蒸水量' : '预估净出杯量'}
+                    {calcStyle === 'espresso'
+                      ? '建议萃取时间'
+                      : calcResult.bloomWater > 0
+                        ? `建议闷蒸水（净出杯 ≈${calcResult.yieldMl}ml）`
+                        : '预估净出杯量'}
                   </span>
                   <span className="spec-kpi-value">
-                    {calcResult.bloomWater > 0 ? `${calcResult.bloomWater} ml` : `${calcResult.yieldMl} ml`}
+                    {calcStyle === 'espresso'
+                      ? calcResult.espressoTimeWindow
+                      : calcResult.bloomWater > 0
+                        ? `${calcResult.bloomWater} ml`
+                        : `${calcResult.yieldMl} ml`}
                   </span>
                 </div>
                 <div className="spec-kpi">

@@ -6,7 +6,14 @@ import type {
   TasteCustomizePreset,
 } from '../types/coffee'
 
-export { playGentleChime, setCafeAmbience, speakBrewPrompt, stopBrewSpeech } from './audio'
+export {
+  isSoundMuted,
+  playGentleChime,
+  setCafeAmbience,
+  setSoundMuted,
+  speakBrewPrompt,
+  stopBrewSpeech,
+} from './audio'
 
 declare global {
   interface Window {

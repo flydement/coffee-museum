@@ -23,13 +23,88 @@ interface TastingArchiveProps {
     recordId: string,
     updates: { rating: number; tastingNote: string }
   ) => void
-  onImportRecords: (records: SavedBrewRecord[]) => void
+  onImportRecords: (records: SavedBrewRecord[]) => { added: number; skipped: number }
   onRebrew: (
     coffee: CoffeeExhibit,
     servings: number,
     tastePreset?: TasteCustomizePreset
   ) => void
   onGoCurator: () => void
+}
+
+function sanitizeImportedRecord(raw: unknown): SavedBrewRecord | null {
+  if (!raw || typeof raw !== 'object') return null
+  const item = raw as Partial<SavedBrewRecord>
+  if (typeof item.recordId !== 'string' || typeof item.coffeeId !== 'string') return null
+  const fallbackCoffee =
+    COFFEE_EXHIBITS.find((c) => c.id === item.coffeeId) ?? COFFEE_EXHIBITS[0]
+
+  const clampAxis = (v: unknown, def: number) =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : def
+
+  const fp = item.flavorProfile
+  const safeProfile: FlavorProfile = {
+    acidity: clampAxis(fp?.acidity, fallbackCoffee.flavorProfile.acidity),
+    sweetness: clampAxis(fp?.sweetness, fallbackCoffee.flavorProfile.sweetness),
+    body: clampAxis(fp?.body, fallbackCoffee.flavorProfile.body),
+    bitterness: clampAxis(fp?.bitterness, fallbackCoffee.flavorProfile.bitterness),
+    aroma: clampAxis(fp?.aroma, fallbackCoffee.flavorProfile.aroma),
+  }
+
+  const safeRating =
+    typeof item.rating === 'number' && Number.isFinite(item.rating)
+      ? Math.min(5, Math.max(1, Math.round(item.rating)))
+      : 5
+
+  return {
+    recordId: item.recordId,
+    catalogNumber:
+      typeof item.catalogNumber === 'string' && item.catalogNumber.trim()
+        ? item.catalogNumber
+        : `#${new Date().getFullYear()}-IMP`,
+    coffeeId: item.coffeeId,
+    coffeeName: typeof item.coffeeName === 'string' ? item.coffeeName : fallbackCoffee.name,
+    englishName:
+      typeof item.englishName === 'string' ? item.englishName : fallbackCoffee.englishName,
+    exhibitNo: typeof item.exhibitNo === 'string' ? item.exhibitNo : fallbackCoffee.exhibitNo,
+    methodLabel:
+      typeof item.methodLabel === 'string' ? item.methodLabel : fallbackCoffee.methodLabel,
+    servings:
+      typeof item.servings === 'number' && item.servings > 0 ? item.servings : 1,
+    tastePreset: item.tastePreset,
+    doseGrams:
+      typeof item.doseGrams === 'number' && item.doseGrams > 0
+        ? item.doseGrams
+        : fallbackCoffee.recipe.doseGrams,
+    waterMl:
+      typeof item.waterMl === 'number' && item.waterMl > 0
+        ? item.waterMl
+        : fallbackCoffee.recipe.waterMl,
+    milkMl:
+      typeof item.milkMl === 'number' && item.milkMl > 0 ? item.milkMl : undefined,
+    waterTempC:
+      typeof item.waterTempC === 'number' && Number.isFinite(item.waterTempC)
+        ? item.waterTempC
+        : fallbackCoffee.recipe.waterTempC,
+    rating: safeRating,
+    tastingNote: typeof item.tastingNote === 'string' ? item.tastingNote : '',
+    brewedAt:
+      typeof item.brewedAt === 'string' && !Number.isNaN(Date.parse(item.brewedAt))
+        ? item.brewedAt
+        : new Date().toISOString(),
+    flavorNotes:
+      Array.isArray(item.flavorNotes) && item.flavorNotes.every((n) => typeof n === 'string')
+        ? item.flavorNotes
+        : fallbackCoffee.flavorNotes,
+    flavorProfile: safeProfile,
+    palette:
+      item.palette &&
+      typeof item.palette.liquid === 'string' &&
+      typeof item.palette.crema === 'string' &&
+      typeof item.palette.accent === 'string'
+        ? item.palette
+        : fallbackCoffee.palette,
+  }
 }
 
 export function TastingArchive({
@@ -49,6 +124,7 @@ export function TastingArchive({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editRating, setEditRating] = useState(5)
   const [editNote, setEditNote] = useState('')
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const filteredRecords = useMemo(() => {
@@ -66,6 +142,7 @@ export function TastingArchive({
   }, [archiveSearch, onlyFiveStar, records])
 
   const startEdit = (rec: SavedBrewRecord) => {
+    setConfirmDeleteId(null)
     setEditingId(rec.recordId)
     setEditRating(rec.rating)
     setEditNote(rec.tastingNote)
@@ -142,12 +219,19 @@ export function TastingArchive({
       try {
         const parsed = JSON.parse(String(reader.result))
         if (Array.isArray(parsed)) {
-          const valid = parsed.filter(
-            (item): item is SavedBrewRecord =>
-              Boolean(item && typeof item.recordId === 'string' && typeof item.coffeeId === 'string')
-          )
-          onImportRecords(valid)
-          setBackupNotice(`成功导入并合并 ${valid.length} 条馆藏记录`)
+          const sanitized = parsed
+            .map(sanitizeImportedRecord)
+            .filter((item): item is SavedBrewRecord => item !== null)
+          if (sanitized.length === 0) {
+            setBackupNotice('未在文件中识别到有效的馆藏记录')
+          } else {
+            const { added, skipped } = onImportRecords(sanitized)
+            setBackupNotice(
+              skipped > 0
+                ? `成功新增 ${added} 条馆藏记录（已跳过 ${skipped} 条重复项）`
+                : `成功导入 ${added} 条馆藏记录`
+            )
+          }
         } else {
           setBackupNotice('备份文件格式不正确')
         }
@@ -484,14 +568,44 @@ export function TastingArchive({
                   >
                     {isEditing ? '收起' : '编辑'}
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    style={{ flex: 0 }}
-                    onClick={() => onDeleteRecord(rec.recordId)}
-                  >
-                    删除
-                  </button>
+                  {confirmDeleteId === rec.recordId ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        style={{
+                          flex: 0,
+                          background: 'var(--cherry-100)',
+                          color: 'var(--cherry-600)',
+                          borderColor: 'var(--cherry-600)',
+                          whiteSpace: 'nowrap',
+                        }}
+                        onClick={() => {
+                          onDeleteRecord(rec.recordId)
+                          setConfirmDeleteId(null)
+                        }}
+                      >
+                        确认删除
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ flex: 0, whiteSpace: 'nowrap' }}
+                        onClick={() => setConfirmDeleteId(null)}
+                      >
+                        取消
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{ flex: 0 }}
+                      onClick={() => setConfirmDeleteId(rec.recordId)}
+                    >
+                      删除
+                    </button>
+                  )}
                 </div>
               </article>
             )

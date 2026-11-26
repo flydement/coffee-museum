@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { FlavorCurator } from './components/FlavorCurator'
 import { Header } from './components/Header'
 import { COFFEE_EXHIBITS } from './data/coffees'
@@ -10,7 +11,7 @@ import type {
   SavedBrewRecord,
   TasteCustomizePreset,
 } from './types/coffee'
-import { setCafeAmbience } from './utils/platform'
+import { setCafeAmbience, setSoundMuted } from './utils/platform'
 import { APP_VERSION } from './utils/version'
 
 const MuseumGallery = lazy(() =>
@@ -30,6 +31,7 @@ const ARCHIVE_STORAGE_KEY = 'atelier_coffee_museum_archive_v1'
 const WISHLIST_STORAGE_KEY = 'atelier_coffee_museum_wishlist_v1'
 const THEME_STORAGE_KEY = 'atelier_coffee_museum_theme_v1'
 const QUIZ_BEST_STORAGE_KEY = 'atelier_coffee_museum_quiz_best_v1'
+const MUTE_STORAGE_KEY = 'atelier_coffee_museum_muted_v1'
 
 function loadArchive(): SavedBrewRecord[] {
   try {
@@ -71,10 +73,19 @@ function loadQuizBest(): number {
   }
 }
 
+function loadSoundMuted(): boolean {
+  try {
+    return window.localStorage.getItem(MUTE_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 export default function App() {
   const [activeView, setActiveView] = useState<AppView>('curator')
   const [theme, setTheme] = useState<MuseumTheme>(() => loadTheme())
   const [ambienceOn, setAmbienceOn] = useState(false)
+  const [soundMuted, setSoundMutedState] = useState<boolean>(() => loadSoundMuted())
 
   const [preference, setPreference] = useState<FlavorPreference>({
     style: 'all',
@@ -127,6 +138,15 @@ export default function App() {
   }, [theme])
 
   useEffect(() => {
+    setSoundMuted(soundMuted)
+    try {
+      window.localStorage.setItem(MUTE_STORAGE_KEY, String(soundMuted))
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [soundMuted])
+
+  useEffect(() => {
     return () => {
       setCafeAmbience(false)
     }
@@ -153,6 +173,10 @@ export default function App() {
 
   const handleToggleTheme = () => {
     setTheme((prev) => (prev === 'daylight' ? 'kissaten' : 'daylight'))
+  }
+
+  const handleToggleSoundMuted = () => {
+    setSoundMutedState((prev) => !prev)
   }
 
   const handleNavigate = (view: AppView) => {
@@ -199,11 +223,15 @@ export default function App() {
   }
 
   const handleImportRecords = (incoming: SavedBrewRecord[]) => {
-    setArchive((prev) => {
-      const existingIds = new Set(prev.map((r) => r.recordId))
-      const newOnes = incoming.filter((r) => !existingIds.has(r.recordId))
-      return [...newOnes, ...prev]
-    })
+    const existingIds = new Set(archive.map((r) => r.recordId))
+    const newOnes = incoming.filter((r) => !existingIds.has(r.recordId))
+    if (newOnes.length > 0) {
+      setArchive((prev) => [...newOnes, ...prev])
+    }
+    return {
+      added: newOnes.length,
+      skipped: incoming.length - newOnes.length,
+    }
   }
 
   const handleFinishQuiz = (score: number) => {
@@ -229,86 +257,94 @@ export default function App() {
         onToggleTheme={handleToggleTheme}
         ambienceOn={ambienceOn}
         onToggleAmbience={handleToggleAmbience}
+        soundMuted={soundMuted}
+        onToggleSoundMuted={handleToggleSoundMuted}
       />
 
       <main className="main-content">
-        <Suspense
-          fallback={
-            <div
-              style={{
-                padding: '64px 20px',
-                textAlign: 'center',
-                color: 'var(--espresso-600)',
-                fontFamily: 'var(--font-serif)',
-              }}
-            >
-              正在布置展厅…
-            </div>
-          }
-        >
-          {activeView === 'curator' && (
-            <FlavorCurator
-              preference={preference}
-              onChangePreference={setPreference}
-              onSelectInspect={handleInspectFromCurator}
-              onStartBrew={(c) => handleStartBrew(c, 1, 'standard')}
-              onOpenGallery={() => handleNavigate('gallery')}
-              archiveCount={archive.length}
-              wishlistIds={wishlistIds}
-              onToggleWishlist={handleToggleWishlist}
-            />
-          )}
+        <ErrorBoundary onResetHome={() => handleNavigate('curator')}>
+          <Suspense
+            fallback={
+              <div
+                style={{
+                  padding: '64px 20px',
+                  textAlign: 'center',
+                  color: 'var(--espresso-600)',
+                  fontFamily: 'var(--font-serif)',
+                }}
+              >
+                正在布置展厅…
+              </div>
+            }
+          >
+            {activeView === 'curator' && (
+              <FlavorCurator
+                preference={preference}
+                onChangePreference={setPreference}
+                onSelectInspect={handleInspectFromCurator}
+                onStartBrew={(c) => handleStartBrew(c, 1, 'standard')}
+                onOpenGallery={() => handleNavigate('gallery')}
+                archiveCount={archive.length}
+                wishlistIds={wishlistIds}
+                onToggleWishlist={handleToggleWishlist}
+              />
+            )}
 
-          {activeView === 'gallery' && (
-            <MuseumGallery
-              inspectedCoffee={inspectedCoffee}
-              onInspect={setInspectedCoffee}
-              onStartBrew={handleStartBrew}
-              unlockedIds={unlockedIds}
-              wishlistIds={wishlistIds}
-              onToggleWishlist={handleToggleWishlist}
-            />
-          )}
+            {activeView === 'gallery' && (
+              <MuseumGallery
+                inspectedCoffee={inspectedCoffee}
+                onInspect={setInspectedCoffee}
+                onStartBrew={handleStartBrew}
+                unlockedIds={unlockedIds}
+                wishlistIds={wishlistIds}
+                onToggleWishlist={handleToggleWishlist}
+              />
+            )}
 
-          {activeView === 'studio' && (
-            <BrewStudio
-              key={activeBrewCoffee.id}
-              coffee={activeBrewCoffee}
-              servings={activeServings}
-              tastePreset={activeTastePreset}
-              onChangeCoffee={(c) => {
-                setActiveBrewCoffee(c)
-                setHasActiveBrew(true)
-              }}
-              onChangeServings={setActiveServings}
-              onChangeTastePreset={setActiveTastePreset}
-              onSaveToArchive={handleSaveArchive}
-              onGoArchive={() => handleNavigate('archive')}
-              existingCount={archive.length}
-            />
-          )}
+            {activeView === 'studio' && (
+              <BrewStudio
+                key={activeBrewCoffee.id}
+                coffee={activeBrewCoffee}
+                servings={activeServings}
+                tastePreset={activeTastePreset}
+                soundMuted={soundMuted}
+                onToggleSoundMuted={handleToggleSoundMuted}
+                onChangeCoffee={(c) => {
+                  setActiveBrewCoffee(c)
+                  setHasActiveBrew(true)
+                }}
+                onChangeServings={setActiveServings}
+                onChangeTastePreset={setActiveTastePreset}
+                onSaveToArchive={handleSaveArchive}
+                onBrewComplete={() => setHasActiveBrew(false)}
+                onBrewRestart={() => setHasActiveBrew(true)}
+                onGoArchive={() => handleNavigate('archive')}
+                existingCount={archive.length}
+              />
+            )}
 
-          {activeView === 'atlas' && (
-            <CoffeeAtlas
-              onInspect={handleInspectFromCurator}
-              onStartBrew={(c) => handleStartBrew(c, 1, 'standard')}
-              bestQuizScore={bestQuizScore}
-              onFinishQuiz={(score) => handleFinishQuiz(score)}
-            />
-          )}
+            {activeView === 'atlas' && (
+              <CoffeeAtlas
+                onInspect={handleInspectFromCurator}
+                onStartBrew={(c) => handleStartBrew(c, 1, 'standard')}
+                bestQuizScore={bestQuizScore}
+                onFinishQuiz={(score) => handleFinishQuiz(score)}
+              />
+            )}
 
-          {activeView === 'archive' && (
-            <TastingArchive
-              records={archive}
-              bestQuizScore={bestQuizScore}
-              onDeleteRecord={handleDeleteRecord}
-              onUpdateRecord={handleUpdateRecord}
-              onImportRecords={handleImportRecords}
-              onRebrew={handleStartBrew}
-              onGoCurator={() => handleNavigate('curator')}
-            />
-          )}
-        </Suspense>
+            {activeView === 'archive' && (
+              <TastingArchive
+                records={archive}
+                bestQuizScore={bestQuizScore}
+                onDeleteRecord={handleDeleteRecord}
+                onUpdateRecord={handleUpdateRecord}
+                onImportRecords={handleImportRecords}
+                onRebrew={handleStartBrew}
+                onGoCurator={() => handleNavigate('curator')}
+              />
+            )}
+          </Suspense>
+        </ErrorBoundary>
       </main>
 
       <footer className="museum-footer">

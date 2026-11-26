@@ -1,5 +1,5 @@
 import { type CSSProperties, useEffect, useMemo, useState } from 'react'
-import { EXHIBIT_EXTRAS } from '../data/atlas'
+import { EXHIBIT_EXTRAS } from '../data/exhibitExtras'
 import { COFFEE_EXHIBITS } from '../data/coffees'
 import type {
   CoffeeExhibit,

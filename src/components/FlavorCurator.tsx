@@ -1,10 +1,10 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
-import { EXHIBIT_EXTRAS, getDailyFeaturedIndex } from '../data/atlas'
 import {
   COFFEE_EXHIBITS,
   CURATOR_SCENARIOS,
   MOOD_FLAVOR_OPTIONS,
 } from '../data/coffees'
+import { EXHIBIT_EXTRAS, getDailyFeaturedIndex } from '../data/exhibitExtras'
 import type {
   CoffeeExhibit,
   DrinkCategory,
@@ -100,6 +100,11 @@ export function FlavorCurator({
   const [slideTrackIdx, setSlideTrackIdx] = useState(0)
   const [slideAnimate, setSlideAnimate] = useState(true)
   const [carouselPaused, setCarouselPaused] = useState(false)
+  const [tabHidden, setTabHidden] = useState(false)
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() =>
+    typeof window !== 'undefined' &&
+    Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+  )
   const touchStartXRef = useRef<number | null>(null)
 
   const slideCount = HERO_EXHIBITION_SLIDES.length
@@ -111,13 +116,27 @@ export function FlavorCurator({
   )
 
   useEffect(() => {
-    if (carouselPaused) return
+    const mq = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (!mq) return
+    const onMotionChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches)
+    mq.addEventListener('change', onMotionChange)
+    return () => mq.removeEventListener('change', onMotionChange)
+  }, [])
+
+  useEffect(() => {
+    const onVisibility = () => setTabHidden(document.visibilityState === 'hidden')
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
+
+  useEffect(() => {
+    if (carouselPaused || tabHidden || prefersReducedMotion) return
     const timer = window.setInterval(() => {
       setSlideAnimate(true)
       setSlideTrackIdx((prev) => (prev >= slideCount ? 1 : prev + 1))
     }, HERO_SLIDE_INTERVAL_MS)
     return () => window.clearInterval(timer)
-  }, [carouselPaused, slideCount])
+  }, [carouselPaused, prefersReducedMotion, slideCount, tabHidden])
 
   const handleSlideTransitionEnd = () => {
     if (slideTrackIdx === slideCount) {
@@ -127,7 +146,11 @@ export function FlavorCurator({
   }
 
   const handleStepSlide = (delta: 1 | -1) => {
-    if (slideTrackIdx >= slideCount) return
+    if (prefersReducedMotion) {
+      setSlideAnimate(false)
+      setSlideTrackIdx((prev) => (prev + delta + slideCount) % slideCount)
+      return
+    }
     setSlideAnimate(true)
     setSlideTrackIdx((prev) => {
       const normalized = prev % slideCount
@@ -137,7 +160,7 @@ export function FlavorCurator({
   }
 
   const handleJumpSlide = (targetIndex: number) => {
-    setSlideAnimate(true)
+    setSlideAnimate(!prefersReducedMotion)
     setSlideTrackIdx(targetIndex)
   }
 
@@ -304,7 +327,11 @@ export function FlavorCurator({
           onMouseEnter={() => setCarouselPaused(true)}
           onMouseLeave={() => setCarouselPaused(false)}
           onFocus={() => setCarouselPaused(true)}
-          onBlur={() => setCarouselPaused(false)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              setCarouselPaused(false)
+            }
+          }}
           onTouchStart={(e) => {
             touchStartXRef.current = e.touches[0]?.clientX ?? null
             setCarouselPaused(true)

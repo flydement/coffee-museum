@@ -7,6 +7,7 @@ import {
   GalleryIcon,
   KettleIcon,
   MuseumLogoIcon,
+  SoundIcon,
   ThemeLampIcon,
 } from './Icons'
 
@@ -19,6 +20,8 @@ interface HeaderProps {
   onToggleTheme: () => void
   ambienceOn: boolean
   onToggleAmbience: () => void
+  soundMuted: boolean
+  onToggleSoundMuted: () => void
 }
 
 const NAV_ITEMS: { id: AppView; label: string; shortLabel: string }[] = [
@@ -38,6 +41,8 @@ export function Header({
   onToggleTheme,
   ambienceOn,
   onToggleAmbience,
+  soundMuted,
+  onToggleSoundMuted,
 }: HeaderProps) {
   const renderIcon = (id: AppView) => {
     switch (id) {
@@ -95,6 +100,18 @@ export function Header({
           </nav>
 
           <div className="header-right-actions">
+            <button
+              id="header-mute-btn"
+              type="button"
+              className={`icon-pill-btn header-icon-only-btn ${soundMuted ? '' : 'active'}`}
+              onClick={onToggleSoundMuted}
+              aria-pressed={!soundMuted}
+              aria-label={soundMuted ? '开启全馆交互提示音' : '静音全馆交互提示音'}
+              title={soundMuted ? '全馆交互提示音已静音（点击开启）' : '点击静音全馆交互提示音'}
+            >
+              <SoundIcon muted={soundMuted} size={15} />
+            </button>
+
             <button
               id="header-ambience-btn"
               type="button"

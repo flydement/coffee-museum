@@ -1,11 +1,20 @@
 // Zero-dependency procedural Web Audio engine for Café Ambience & Brewing Cues
 
 let sharedCtx: AudioContext | null = null
+let globalSoundMuted = false
 let ambienceNodes: {
   source: AudioBufferSourceNode
   gain: GainNode
   crackleTimer: number
 } | null = null
+
+export function setSoundMuted(muted: boolean) {
+  globalSoundMuted = muted
+}
+
+export function isSoundMuted(): boolean {
+  return globalSoundMuted
+}
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null
@@ -23,6 +32,7 @@ function getAudioContext(): AudioContext | null {
 }
 
 export function playGentleChime(type: 'step' | 'complete' | 'tick' = 'step') {
+  if (globalSoundMuted) return
   try {
     const ctx = getAudioContext()
     if (!ctx) return

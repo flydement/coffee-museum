@@ -3040,6 +3040,7 @@ export const COFFEE_EXHIBITS: CoffeeExhibit[] = [
           '中心缓注补足至 220ml，当滤布内尚留一层浅色泡沫时提前移开滤架，摇匀装入厚壁瓷杯趁温热慢品。',
         baristaTip: '试着往杯里轻滴 10ml 淡奶油，瞬间化身充满南洋风情的香料丝绒咖！',
         visualLevel: 94,
+        isPouring: true,
         hasSteam: true,
       },
     ],

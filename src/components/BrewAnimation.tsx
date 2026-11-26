@@ -765,7 +765,7 @@ export function BrewAnimation({
                 </g>
               )}
 
-              {isDirty && fillPercent >= 90 && (
+              {isDirty && !isMatchaFusion && fillPercent >= 90 && (
                 <g fill={isCreamTop ? '#7D4E32' : '#E6B24C'}>
                   <circle cx="144" cy={topY + 8} r="2.8" />
                   <circle cx="158" cy={topY + 6} r="3.2" />
@@ -986,7 +986,7 @@ export function BrewAnimation({
   if (coffee.method === 'phin') {
     const isFinished = step.phase === 'finish'
     const isWhipping = step.phase === 'milk'
-    const showPhinOnCup = !isFinished
+    const showPhinOnCup = !isFinished && !isWhipping
     const coffeeH = Math.round((Math.min(fillPercent, 65) / 100) * 102)
     const coffeeY = 232 - coffeeH
     const showEggFoam = isFinished || isWhipping
