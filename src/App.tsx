@@ -1,10 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { BrewStudio } from './components/BrewStudio'
-import { CoffeeAtlas } from './components/CoffeeAtlas'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { FlavorCurator } from './components/FlavorCurator'
 import { Header } from './components/Header'
-import { MuseumGallery } from './components/MuseumGallery'
-import { TastingArchive } from './components/TastingArchive'
 import { COFFEE_EXHIBITS } from './data/coffees'
 import type {
   AppView,
@@ -16,6 +12,19 @@ import type {
 } from './types/coffee'
 import { setCafeAmbience } from './utils/platform'
 import { APP_VERSION } from './utils/version'
+
+const MuseumGallery = lazy(() =>
+  import('./components/MuseumGallery').then((m) => ({ default: m.MuseumGallery }))
+)
+const BrewStudio = lazy(() =>
+  import('./components/BrewStudio').then((m) => ({ default: m.BrewStudio }))
+)
+const CoffeeAtlas = lazy(() =>
+  import('./components/CoffeeAtlas').then((m) => ({ default: m.CoffeeAtlas }))
+)
+const TastingArchive = lazy(() =>
+  import('./components/TastingArchive').then((m) => ({ default: m.TastingArchive }))
+)
 
 const ARCHIVE_STORAGE_KEY = 'atelier_coffee_museum_archive_v1'
 const WISHLIST_STORAGE_KEY = 'atelier_coffee_museum_wishlist_v1'
@@ -223,68 +232,83 @@ export default function App() {
       />
 
       <main className="main-content">
-        {activeView === 'curator' && (
-          <FlavorCurator
-            preference={preference}
-            onChangePreference={setPreference}
-            onSelectInspect={handleInspectFromCurator}
-            onStartBrew={(c) => handleStartBrew(c, 1, 'standard')}
-            onOpenGallery={() => handleNavigate('gallery')}
-            archiveCount={archive.length}
-            wishlistIds={wishlistIds}
-            onToggleWishlist={handleToggleWishlist}
-          />
-        )}
+        <Suspense
+          fallback={
+            <div
+              style={{
+                padding: '64px 20px',
+                textAlign: 'center',
+                color: 'var(--espresso-600)',
+                fontFamily: 'var(--font-serif)',
+              }}
+            >
+              正在布置展厅…
+            </div>
+          }
+        >
+          {activeView === 'curator' && (
+            <FlavorCurator
+              preference={preference}
+              onChangePreference={setPreference}
+              onSelectInspect={handleInspectFromCurator}
+              onStartBrew={(c) => handleStartBrew(c, 1, 'standard')}
+              onOpenGallery={() => handleNavigate('gallery')}
+              archiveCount={archive.length}
+              wishlistIds={wishlistIds}
+              onToggleWishlist={handleToggleWishlist}
+            />
+          )}
 
-        {activeView === 'gallery' && (
-          <MuseumGallery
-            inspectedCoffee={inspectedCoffee}
-            onInspect={setInspectedCoffee}
-            onStartBrew={handleStartBrew}
-            unlockedIds={unlockedIds}
-            wishlistIds={wishlistIds}
-            onToggleWishlist={handleToggleWishlist}
-          />
-        )}
+          {activeView === 'gallery' && (
+            <MuseumGallery
+              inspectedCoffee={inspectedCoffee}
+              onInspect={setInspectedCoffee}
+              onStartBrew={handleStartBrew}
+              unlockedIds={unlockedIds}
+              wishlistIds={wishlistIds}
+              onToggleWishlist={handleToggleWishlist}
+            />
+          )}
 
-        {activeView === 'studio' && (
-          <BrewStudio
-            key={activeBrewCoffee.id}
-            coffee={activeBrewCoffee}
-            servings={activeServings}
-            tastePreset={activeTastePreset}
-            onChangeCoffee={(c) => {
-              setActiveBrewCoffee(c)
-              setHasActiveBrew(true)
-            }}
-            onChangeServings={setActiveServings}
-            onChangeTastePreset={setActiveTastePreset}
-            onSaveToArchive={handleSaveArchive}
-            onGoArchive={() => handleNavigate('archive')}
-            existingCount={archive.length}
-          />
-        )}
+          {activeView === 'studio' && (
+            <BrewStudio
+              key={activeBrewCoffee.id}
+              coffee={activeBrewCoffee}
+              servings={activeServings}
+              tastePreset={activeTastePreset}
+              onChangeCoffee={(c) => {
+                setActiveBrewCoffee(c)
+                setHasActiveBrew(true)
+              }}
+              onChangeServings={setActiveServings}
+              onChangeTastePreset={setActiveTastePreset}
+              onSaveToArchive={handleSaveArchive}
+              onGoArchive={() => handleNavigate('archive')}
+              existingCount={archive.length}
+            />
+          )}
 
-        {activeView === 'atlas' && (
-          <CoffeeAtlas
-            onInspect={handleInspectFromCurator}
-            onStartBrew={(c) => handleStartBrew(c, 1, 'standard')}
-            bestQuizScore={bestQuizScore}
-            onFinishQuiz={(score) => handleFinishQuiz(score)}
-          />
-        )}
+          {activeView === 'atlas' && (
+            <CoffeeAtlas
+              onInspect={handleInspectFromCurator}
+              onStartBrew={(c) => handleStartBrew(c, 1, 'standard')}
+              bestQuizScore={bestQuizScore}
+              onFinishQuiz={(score) => handleFinishQuiz(score)}
+            />
+          )}
 
-        {activeView === 'archive' && (
-          <TastingArchive
-            records={archive}
-            bestQuizScore={bestQuizScore}
-            onDeleteRecord={handleDeleteRecord}
-            onUpdateRecord={handleUpdateRecord}
-            onImportRecords={handleImportRecords}
-            onRebrew={handleStartBrew}
-            onGoCurator={() => handleNavigate('curator')}
-          />
-        )}
+          {activeView === 'archive' && (
+            <TastingArchive
+              records={archive}
+              bestQuizScore={bestQuizScore}
+              onDeleteRecord={handleDeleteRecord}
+              onUpdateRecord={handleUpdateRecord}
+              onImportRecords={handleImportRecords}
+              onRebrew={handleStartBrew}
+              onGoCurator={() => handleNavigate('curator')}
+            />
+          )}
+        </Suspense>
       </main>
 
       <footer className="museum-footer">

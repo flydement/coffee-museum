@@ -3,6 +3,7 @@ import {
   BREW_TROUBLESHOOT_CASES,
   COFFEE_ORIGINS,
   COFFEE_TRIVIA_QUESTIONS,
+  FLAVOR_WHEEL_FAMILIES,
   PROCESS_GUIDES,
   ROAST_STAGES,
   type CoffeeTriviaQuestion,
@@ -19,7 +20,7 @@ interface CoffeeAtlasProps {
   onFinishQuiz: (score: number, total: number) => void
 }
 
-type AtlasSection = 'map' | 'craft' | 'troubleshoot' | 'quiz'
+type AtlasSection = 'map' | 'wheel' | 'craft' | 'troubleshoot' | 'quiz'
 
 function pickQuizRound(count = 5): CoffeeTriviaQuestion[] {
   const pool = [...COFFEE_TRIVIA_QUESTIONS]
@@ -38,6 +39,10 @@ export function CoffeeAtlas({
 }: CoffeeAtlasProps) {
   const [section, setSection] = useState<AtlasSection>('map')
   const [selectedOriginId, setSelectedOriginId] = useState<string>(COFFEE_ORIGINS[0].id)
+  const [selectedWheelId, setSelectedWheelId] = useState<string>(FLAVOR_WHEEL_FAMILIES[0].id)
+  const [calcDose, setCalcDose] = useState<number>(15)
+  const [calcRatio, setCalcRatio] = useState<number>(15)
+  const [calcStyle, setCalcStyle] = useState<'pourover' | 'coldbrew' | 'espresso'>('pourover')
   const [selectedRoast, setSelectedRoast] = useState<number>(2)
   const [selectedProcessId, setSelectedProcessId] = useState<string>(PROCESS_GUIDES[0].id)
   const [selectedCaseId, setSelectedCaseId] = useState<string>(BREW_TROUBLESHOOT_CASES[0].id)
@@ -90,6 +95,33 @@ export function CoffeeAtlas({
     () => COFFEE_EXHIBITS.find((c) => c.id === activeTroubleshoot.practiceExhibitId),
     [activeTroubleshoot]
   )
+
+  const activeWheelFamily = useMemo(
+    () => FLAVOR_WHEEL_FAMILIES.find((f) => f.id === selectedWheelId) ?? FLAVOR_WHEEL_FAMILIES[0],
+    [selectedWheelId]
+  )
+
+  const wheelExhibits = useMemo(() => {
+    return COFFEE_EXHIBITS.filter((c) => {
+      const text = `${c.flavorNotes.join(' ')} ${c.moodTags.join(' ')} ${c.name}`
+      return activeWheelFamily.matchKeywords.some((kw) => text.includes(kw))
+    })
+  }, [activeWheelFamily])
+
+  const calcResult = useMemo(() => {
+    const effectiveRatio = calcStyle === 'espresso' ? 2 : calcStyle === 'coldbrew' ? Math.min(calcRatio, 12) : calcRatio
+    const totalWater = Math.round(calcDose * effectiveRatio)
+    const bloomWater = calcStyle === 'pourover' ? Math.round(calcDose * 2.2) : 0
+    const yieldMl =
+      calcStyle === 'espresso'
+        ? Math.round(calcDose * 2)
+        : Math.max(0, Math.round(totalWater - calcDose * 2))
+    // Average Arabica caffeine ~11mg/g bean extracted at ~78%-88% efficiency
+    const mgPerGram = calcStyle === 'coldbrew' ? 9.8 : calcStyle === 'espresso' ? 8.2 : 9.2
+    const estCaffeineMg = Math.round(calcDose * mgPerGram)
+    const dailyPct = Math.min(100, Math.round((estCaffeineMg / 400) * 100))
+    return { effectiveRatio, totalWater, bloomWater, yieldMl, estCaffeineMg, dailyPct }
+  }, [calcDose, calcRatio, calcStyle])
 
   const processExhibits = useMemo(
     () =>
@@ -152,9 +184,10 @@ export function CoffeeAtlas({
         <div className="serving-switcher" role="tablist" aria-label="博物展厅分区">
           {[
             { id: 'map' as const, label: '世界风味地图' },
+            { id: 'wheel' as const, label: '风味轮与计算' },
             { id: 'craft' as const, label: '烘焙与处理法' },
             { id: 'troubleshoot' as const, label: '冲煮诊断室' },
-            { id: 'quiz' as const, label: `趣味品鉴挑战${bestQuizScore > 0 ? ` (${bestQuizScore}/5)` : ''}` },
+            { id: 'quiz' as const, label: `趣味挑战${bestQuizScore > 0 ? ` (${bestQuizScore}/5)` : ''}` },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -425,7 +458,302 @@ export function CoffeeAtlas({
         </section>
       )}
 
-      {/* SECTION 2: Roast Spectrum & Processing Craft Lab */}
+      {/* SECTION 2: Interactive Coffee Flavor Wheel & Universal Brew Calculator */}
+      {section === 'wheel' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
+          <section className="atlas-craft-card" aria-label="交互式精品咖啡风味轮">
+            <p className="eyebrow">SCA INSPIRED FLAVOR WHEEL · 交互式咖啡风味轮</p>
+            <h2 className="section-heading" style={{ fontSize: '1.42rem', marginBottom: 6 }}>
+              转动风味罗盘，按香气家族发现对应馆藏
+            </h2>
+            <p className="section-lead" style={{ marginBottom: 20 }}>
+              点击风味轮上任意扇区，探索该香气家族的代表词条，并从全馆 {COFFEE_EXHIBITS.length} 款豆单中精准筛出吻合展品。
+            </p>
+
+            <div className="wheel-explorer-grid">
+              <div className="wheel-svg-box">
+                <svg
+                  viewBox="0 0 320 320"
+                  width="100%"
+                  style={{ maxWidth: 320 }}
+                  role="img"
+                  aria-label="六大咖啡风味家族交互风味轮"
+                >
+                  {FLAVOR_WHEEL_FAMILIES.map((fam, idx) => {
+                    const count = FLAVOR_WHEEL_FAMILIES.length
+                    const startDeg = (idx * 360) / count - 90
+                    const endDeg = ((idx + 1) * 360) / count - 90
+                    const midDeg = (startDeg + endDeg) / 2
+                    const toRad = (d: number) => (d * Math.PI) / 180
+                    const active = fam.id === activeWheelFamily.id
+                    const rOuter = active ? 142 : 132
+                    const rInner = 54
+                    const cx = 160
+                    const cy = 160
+
+                    const x1 = cx + rOuter * Math.cos(toRad(startDeg))
+                    const y1 = cy + rOuter * Math.sin(toRad(startDeg))
+                    const x2 = cx + rOuter * Math.cos(toRad(endDeg))
+                    const y2 = cy + rOuter * Math.sin(toRad(endDeg))
+                    const x3 = cx + rInner * Math.cos(toRad(endDeg))
+                    const y3 = cy + rInner * Math.sin(toRad(endDeg))
+                    const x4 = cx + rInner * Math.cos(toRad(startDeg))
+                    const y4 = cy + rInner * Math.sin(toRad(startDeg))
+
+                    const d = [
+                      `M ${x1.toFixed(1)} ${y1.toFixed(1)}`,
+                      `A ${rOuter} ${rOuter} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`,
+                      `L ${x3.toFixed(1)} ${y3.toFixed(1)}`,
+                      `A ${rInner} ${rInner} 0 0 0 ${x4.toFixed(1)} ${y4.toFixed(1)}`,
+                      'Z',
+                    ].join(' ')
+
+                    const labelR = 96
+                    const lx = cx + labelR * Math.cos(toRad(midDeg))
+                    const ly = cy + labelR * Math.sin(toRad(midDeg))
+
+                    return (
+                      <g
+                        key={fam.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`选择风味家族：${fam.name}`}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          setSelectedWheelId(fam.id)
+                          playGentleChime('tick')
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            setSelectedWheelId(fam.id)
+                          }
+                        }}
+                      >
+                        <path
+                          d={d}
+                          fill={fam.color}
+                          fillOpacity={active ? 0.96 : 0.72}
+                          stroke="var(--paper-surface)"
+                          strokeWidth={active ? 3.5 : 2}
+                          style={{ transition: 'all 0.25s cubic-bezier(0.22, 1, 0.36, 1)' }}
+                        />
+                        <text
+                          x={lx}
+                          y={ly}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill="#FCF9F3"
+                          fontSize={active ? '12.5' : '11.5'}
+                          fontWeight="700"
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          {fam.name}
+                        </text>
+                      </g>
+                    )
+                  })}
+                  <circle cx="160" cy="160" r="50" fill="var(--paper-surface)" stroke="var(--border-brass)" strokeWidth="2" />
+                  <text x="160" y="154" textAnchor="middle" fontSize="11" fill="var(--brass-700)" fontWeight="700">
+                    FLAVOR
+                  </text>
+                  <text x="160" y="170" textAnchor="middle" fontSize="12" fill="var(--espresso-950)" fontWeight="700">
+                    风味罗盘
+                  </text>
+                </svg>
+              </div>
+
+              <div className="wheel-detail-col">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <span
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: '50%',
+                      background: activeWheelFamily.color,
+                      display: 'inline-block',
+                    }}
+                  />
+                  <span className="eyebrow" style={{ margin: 0 }}>
+                    {activeWheelFamily.englishName}
+                  </span>
+                </div>
+                <h3 className="exhibit-title" style={{ fontSize: '1.35rem', marginBottom: 6 }}>
+                  {activeWheelFamily.name}家族
+                </h3>
+                <p style={{ margin: '0 0 12px', fontSize: '0.92rem', color: 'var(--espresso-800)' }}>
+                  {activeWheelFamily.description}
+                </p>
+
+                <div className="pill-row" style={{ marginBottom: 16 }}>
+                  {activeWheelFamily.subNotes.map((sub) => (
+                    <span
+                      key={sub}
+                      className="tag"
+                      style={{
+                        background: activeWheelFamily.lightColor,
+                        borderColor: activeWheelFamily.color,
+                        color: 'var(--espresso-950)',
+                      }}
+                    >
+                      {sub}
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ fontSize: '0.82rem', fontWeight: 600, marginBottom: 10 }}>
+                  全馆吻合展品（共 {wheelExhibits.length} 款，精选展示前 5 款）：
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {wheelExhibits.slice(0, 5).map((c) => (
+                    <div key={c.id} className="atlas-mini-exhibit">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <CupEmblem
+                          method={c.method}
+                          liquid={c.palette.liquid}
+                          crema={c.palette.crema}
+                        />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{c.name}</div>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--espresso-600)' }}>
+                            {c.flavorNotes.slice(0, 3).join(' · ')}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          style={{ padding: '5px 10px', fontSize: '0.76rem' }}
+                          onClick={() => onInspect(c)}
+                        >
+                          档案
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          style={{ padding: '5px 10px', fontSize: '0.76rem' }}
+                          onClick={() => onStartBrew(c)}
+                        >
+                          冲煮
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Universal Golden Ratio & Caffeine Estimator */}
+          <section className="atlas-craft-card" aria-label="万能手冲粉水比与咖啡因计算器">
+            <p className="eyebrow">BREW RATIO & CAFFEINE CALCULATOR · 万能粉水与咖啡因估算</p>
+            <h2 className="section-heading" style={{ fontSize: '1.4rem', marginBottom: 14 }}>
+              手头有一包任意咖啡豆？快速换算黄金粉水与咖啡因
+            </h2>
+
+            <div className="pill-row" style={{ marginBottom: 18 }}>
+              {[
+                { id: 'pourover' as const, label: '手冲 / 聪明杯 / 法压 (1:14 – 1:17)' },
+                { id: 'coldbrew' as const, label: '冰滴 / 低温冷萃 (1:8 – 1:12)' },
+                { id: 'espresso' as const, label: '意式浓缩 Espresso (1:2)' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`filter-pill ${calcStyle === m.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setCalcStyle(m.id)
+                    if (m.id === 'pourover') setCalcRatio(15)
+                    else if (m.id === 'coldbrew') setCalcRatio(10)
+                  }}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="roast-detail-box">
+              <div>
+                <div className="slider-item">
+                  <div className="slider-meta">
+                    <span className="slider-name">咖啡豆粉量</span>
+                    <span className="slider-val">{calcDose} g</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={10}
+                    max={40}
+                    step={1}
+                    value={calcDose}
+                    className="museum-range"
+                    style={{
+                      background: `linear-gradient(to right, var(--brass-600) ${((calcDose - 10) / 30) * 100}%, var(--paper-warm) ${((calcDose - 10) / 30) * 100}%)`,
+                    }}
+                    onChange={(e) => setCalcDose(Number(e.target.value))}
+                  />
+                </div>
+
+                {calcStyle !== 'espresso' && (
+                  <div className="slider-item" style={{ marginBottom: 0 }}>
+                    <div className="slider-meta">
+                      <span className="slider-name">粉水比例</span>
+                      <span className="slider-val">1 : {calcResult.effectiveRatio}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={calcStyle === 'coldbrew' ? 8 : 12}
+                      max={calcStyle === 'coldbrew' ? 12 : 18}
+                      step={0.5}
+                      value={calcResult.effectiveRatio}
+                      className="museum-range"
+                      style={{
+                        background: `linear-gradient(to right, var(--brass-600) ${
+                          calcStyle === 'coldbrew'
+                            ? ((calcResult.effectiveRatio - 8) / 4) * 100
+                            : ((calcResult.effectiveRatio - 12) / 6) * 100
+                        }%, var(--paper-warm) ${
+                          calcStyle === 'coldbrew'
+                            ? ((calcResult.effectiveRatio - 8) / 4) * 100
+                            : ((calcResult.effectiveRatio - 12) / 6) * 100
+                        }%)`,
+                      }}
+                      onChange={(e) => setCalcRatio(Number(e.target.value))}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="spec-kpi-grid" style={{ margin: 0 }}>
+                <div className="spec-kpi">
+                  <span className="spec-kpi-label">
+                    {calcStyle === 'espresso' ? '目标浓缩液重' : '建议总注水量'}
+                  </span>
+                  <span className="spec-kpi-value">{calcResult.totalWater} ml</span>
+                </div>
+                <div className="spec-kpi">
+                  <span className="spec-kpi-label">
+                    {calcResult.bloomWater > 0 ? '建议闷蒸水量' : '预估净出杯量'}
+                  </span>
+                  <span className="spec-kpi-value">
+                    {calcResult.bloomWater > 0 ? `${calcResult.bloomWater} ml` : `${calcResult.yieldMl} ml`}
+                  </span>
+                </div>
+                <div className="spec-kpi">
+                  <span className="spec-kpi-label">预估咖啡因含量</span>
+                  <span className="spec-kpi-value">≈ {calcResult.estCaffeineMg} mg</span>
+                </div>
+                <div className="spec-kpi">
+                  <span className="spec-kpi-label">占成人日建议上限 (400mg)</span>
+                  <span className="spec-kpi-value">{calcResult.dailyPct}%</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* SECTION 3: Roast Spectrum & Processing Craft Lab */}
       {section === 'craft' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
           {/* Interactive Roast Timeline */}

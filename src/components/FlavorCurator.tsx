@@ -62,6 +62,20 @@ const HERO_EXHIBITION_SLIDES = [
     badge: 'COLD DRIP · CITRUS',
     alt: '拾光咖啡博物馆常设展 03：京都慢萃冰滴塔、球冰冷萃与鲜橙迷迭香特调',
   },
+  {
+    id: 'syphon-kissaten',
+    src: './images/exhibition-syphon-kissaten.jpg',
+    caption: '常设展 · 04 — 昭和吃茶与虹吸真空剧场',
+    badge: 'SIPHON · KISSATEN',
+    alt: '拾光咖啡博物馆常设展 04：玻璃虹吸真空壶、酒精灯、昭和吃茶馆木质吧台与香料咖啡枝',
+  },
+  {
+    id: 'turkish-atlas',
+    src: './images/exhibition-turkish-atlas.jpg',
+    caption: '常设展 · 05 — 千年铜壶与世界咖啡种植带',
+    badge: 'CEZVE · HERITAGE',
+    alt: '拾光咖啡博物馆常设展 05：手工锻打土耳其铜壶、复古手摇磨豆机、绿豆蔻与世界咖啡地图',
+  },
 ] as const
 
 const HERO_SLIDE_INTERVAL_MS = 4500

@@ -625,6 +625,7 @@ export function BrewAnimation({
     const isLemon = coffee.method === 'iced'
     const isOrange = coffee.id === 'orange-c-cold-americano'
     const isFrappe = coffee.id === 'greek-iced-frappe'
+    const isMatchaFusion = coffee.id === 'uji-matcha-espresso-fusion'
     const isCreamTop = coffee.id === 'viennese-einspanner' || coffee.id === 'irish-velvet-coffee'
     const isAffogato = coffee.id === 'florence-affogato'
 
@@ -708,7 +709,22 @@ export function BrewAnimation({
               />
 
               {/* Layered cascade */}
-              {(isCreamTop || isFrappe) && fillPercent > 50 ? (
+              {isMatchaFusion ? (
+                <>
+                  {/* Emerald Uji Matcha base */}
+                  <rect x="102" y="182" width="116" height="62" fill="#5A8B4B" />
+                  <path d="M102 182 Q132 174 160 182 T218 180 V192 H102 Z" fill="#6D9F5B" opacity="0.88" />
+                  {/* Espresso mahogany top cascade */}
+                  {fillPercent > 75 && (
+                    <path
+                      d={`M102 ${topY} H218 V${topY + 42} Q188 ${topY + 54} 160 ${topY + 44} T102 ${topY + 48} Z`}
+                      fill={liquid}
+                      opacity="0.94"
+                      style={{ transition: 'all 0.5s ease' }}
+                    />
+                  )}
+                </>
+              ) : (isCreamTop || isFrappe) && fillPercent > 50 ? (
                 <path
                   d={`M102 ${topY} H218 V${topY + (isFrappe ? 48 : 38)} Q188 ${topY + (isFrappe ? 56 : 46)} 160 ${topY + (isFrappe ? 50 : 40)} T102 ${topY + (isFrappe ? 52 : 42)} Z`}
                   fill={crema}
@@ -1054,6 +1070,140 @@ export function BrewAnimation({
         )}
 
         <SteamCurls show={step.hasSteam} y={showPhinOnCup ? 54 : 112} />
+      </svg>
+    )
+  }
+
+  // 10. Clever Dripper (Steeping Cone with Bottom Release Valve -> Mug)
+  if (coffee.method === 'clever') {
+    const isReleasing = step.phase === 'extract' || step.phase === 'finish'
+    const upperLevel = isReleasing ? Math.max(8, Math.round(62 * (1 - stepProgress))) : Math.min(64, Math.round((fillPercent / 100) * 68))
+    const mugFillH = isReleasing ? Math.round(10 + stepProgress * 56) : 0
+    const mugFillY = 234 - mugFillH
+    const dripperShiftY = isReleasing ? 12 : 0
+
+    return (
+      <svg viewBox="0 0 320 270" width="100%" style={{ maxWidth: 340 }} aria-label="聪明杯底阀浸泡放流实时演示">
+        <defs>
+          <clipPath id="clever-cone-clip">
+            <polygon points="106,54 214,54 190,138 130,138" />
+          </clipPath>
+          <clipPath id="clever-mug-clip">
+            <path d="M118 158 H202 V214 C202 228 190 236 174 236 H146 C130 236 118 228 118 214 Z" />
+          </clipPath>
+        </defs>
+
+        {/* Saucer / Coaster */}
+        <rect x="86" y="240" width="148" height="10" rx="5" fill="#C9A87D" stroke="#6E4E34" strokeWidth="1.5" />
+
+        {/* Lower Ceramic Mug */}
+        <path
+          d="M118 158 H202 V214 C202 228 190 236 174 236 H146 C130 236 118 228 118 214 Z"
+          fill="#FCF9F3"
+          stroke="#3E2A20"
+          strokeWidth="2.4"
+        />
+        <path
+          d="M202 172 H220 C230 172 236 180 236 192 C236 204 230 212 220 212 H200"
+          stroke="#3E2A20"
+          strokeWidth="5.8"
+          strokeLinecap="round"
+          fill="none"
+        />
+
+        {/* Brewed ruby-amber coffee inside mug */}
+        <g clipPath="url(#clever-mug-clip)">
+          {mugFillH > 0 && (
+            <>
+              <rect
+                x="114"
+                y={mugFillY}
+                width="92"
+                height={mugFillH + 10}
+                fill={liquid}
+                style={{ transition: 'y 0.35s linear, height 0.35s linear' }}
+              />
+              <ellipse cx="160" cy={mugFillY} rx="40" ry="5" fill={crema} opacity="0.78" />
+            </>
+          )}
+        </g>
+
+        {/* Release stream when seated on mug */}
+        {isReleasing && activePour && (
+          <line
+            className="svg-pour-stream"
+            x1="160"
+            y1="150"
+            x2="160"
+            y2={Math.max(170, mugFillY)}
+            stroke={liquid}
+            strokeWidth="4.8"
+            strokeLinecap="round"
+          />
+        )}
+
+        {/* Clever Dripper Upper Vessel (drops onto mug to open valve) */}
+        <g transform={`translate(0, ${dripperShiftY})`} style={{ transition: 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}>
+          {/* Base Ring & Valve Piston */}
+          <rect x="114" y="136" width="92" height="10" rx="4" fill="#D5C8B5" stroke="#3E2A20" strokeWidth="1.8" />
+          <circle cx="160" cy={isReleasing ? 137 : 145} r="5.5" fill={isReleasing ? '#4F6753' : '#C28C4D'} stroke="#3E2A20" strokeWidth="1.5" />
+
+          {/* Handle */}
+          <path
+            d="M204 68 H224 C232 68 236 74 234 84 L224 118 H196"
+            stroke="#5A4638"
+            strokeWidth="5.5"
+            strokeLinecap="round"
+            fill="none"
+          />
+
+          {/* Trapezoid Clear Steep Chamber */}
+          <polygon
+            points="106,54 214,54 190,138 130,138"
+            fill="rgba(255,255,255,0.65)"
+            stroke="#3E2A20"
+            strokeWidth="2.3"
+            strokeLinejoin="round"
+          />
+
+          {/* Steeped Coffee Slurry Inside */}
+          <g clipPath="url(#clever-cone-clip)">
+            <rect
+              x="100"
+              y={138 - upperLevel}
+              width="120"
+              height={upperLevel + 8}
+              fill={liquid}
+              opacity="0.92"
+              style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
+            />
+            {upperLevel > 14 && (
+              <rect
+                x="100"
+                y={138 - upperLevel}
+                width="120"
+                height="9"
+                fill={crema}
+                opacity="0.82"
+                style={{ transition: 'y 0.4s linear' }}
+              />
+            )}
+            {step.isBlooming && (
+              <g>
+                <circle className="svg-bloom-bubble" cx="144" cy={138 - upperLevel + 12} r="4.5" fill={crema} />
+                <circle className="svg-bloom-bubble" cx="160" cy={138 - upperLevel + 10} r="6" fill={crema} />
+                <circle className="svg-bloom-bubble" cx="176" cy={138 - upperLevel + 13} r="4" fill={crema} />
+              </g>
+            )}
+          </g>
+
+          {/* Optional Lid during steeping */}
+          {step.phase === 'bloom' && (
+            <rect x="102" y="46" width="116" height="8" rx="4" fill="#B88446" stroke="#3E2A20" strokeWidth="1.8" />
+          )}
+        </g>
+
+        <SteamCurls show={step.hasSteam} y={42} />
       </svg>
     )
   }

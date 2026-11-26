@@ -155,3 +155,32 @@ export function setCafeAmbience(enabled: boolean): boolean {
     return false
   }
 }
+
+/**
+ * Optional hands-free Mandarin voice announcer using native Web Speech API.
+ * Gracefully no-ops when unsupported by the runtime.
+ */
+export function speakBrewPrompt(text: string) {
+  try {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+    window.speechSynthesis.cancel()
+    const utter = new SpeechSynthesisUtterance(text)
+    utter.lang = 'zh-CN'
+    utter.rate = 1.02
+    utter.pitch = 1.0
+    utter.volume = 0.88
+    window.speechSynthesis.speak(utter)
+  } catch {
+    // Ignore speech synthesis errors
+  }
+}
+
+export function stopBrewSpeech() {
+  try {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
+  } catch {
+    // Ignore
+  }
+}
