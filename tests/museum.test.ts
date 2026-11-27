@@ -17,6 +17,11 @@ import { EXHIBIT_EXTRAS, getDailyFeaturedIndex } from '../src/data/exhibitExtras
 import type { SavedBrewRecord } from '../src/types/coffee.ts'
 import { sanitizeImportedRecord } from '../src/utils/archive.ts'
 import {
+  BEAN_CAFFEINE_OPTIONS,
+  BREW_CALC_PRESETS,
+  calculateBrewMetrics,
+} from '../src/utils/calculator.ts'
+import {
   computeCuratorBadges,
   formatRecipeShareText,
   formatSeconds,
@@ -395,4 +400,43 @@ describe('Hash Routing, Quick Search & Archive Sanitization', () => {
     assert.equal(sanitized.flavorProfile.bitterness, 43)
     assert.ok(!Number.isNaN(Date.parse(sanitized.brewedAt)))
   })
+
+  it('calculates all 8 brew categories, 3 bean caffeine factors, and valid Atlas label offsets', () => {
+    assert.equal(BREW_CALC_PRESETS.length, 8)
+    assert.equal(BEAN_CAFFEINE_OPTIONS.length, 3)
+
+    for (const preset of BREW_CALC_PRESETS) {
+      const out = calculateBrewMetrics(preset.id, preset.defaultDose, preset.defaultSecond, 'arabica')
+      assert.ok(out.primaryMetricValue.length > 0)
+      assert.ok(out.secondaryMetricValue.length > 0)
+      assert.ok(out.estCaffeineMg > 0)
+      assert.ok(out.dailyPct >= 0 && out.dailyPct <= 100)
+    }
+
+    // Japanese Iced Pourover splits 60% hot water + 40% ice
+    const iced = calculateBrewMetrics('iced-pourover', 16, 15, 'arabica')
+    assert.equal(iced.primaryMetricValue, '144ml + 96g冰')
+    assert.equal(iced.secondaryMetricValue, '32 ml')
+
+    // Milk coffee classifies cup style cleanly
+    const magic = calculateBrewMetrics('milk-coffee', 18, 120, 'arabica')
+    assert.ok(magic.styleBadge.includes('Magic'))
+    const latte = calculateBrewMetrics('milk-coffee', 18, 200, 'arabica')
+    assert.ok(latte.styleBadge.includes('拿铁'))
+
+    // Bean species caffeine ordering: robusta-blend > arabica > decaf
+    const arabica = calculateBrewMetrics('moka-phin', 16, 7.5, 'arabica')
+    const robusta = calculateBrewMetrics('moka-phin', 16, 7.5, 'robusta-blend')
+    const decaf = calculateBrewMetrics('moka-phin', 16, 7.5, 'decaf')
+    assert.ok(robusta.estCaffeineMg > arabica.estCaffeineMg)
+    assert.ok(arabica.estCaffeineMg > decaf.estCaffeineMg * 10)
+
+    // All 16 Atlas origins have valid collision-free label placement metadata
+    for (const origin of COFFEE_ORIGINS) {
+      assert.equal(typeof origin.labelDx, 'number')
+      assert.equal(typeof origin.labelDy, 'number')
+      assert.ok(['start', 'middle', 'end'].includes(origin.labelAnchor))
+    }
+  })
 })
+

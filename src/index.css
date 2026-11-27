@@ -146,7 +146,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
-[role='button']:focus-visible {
+[role='button']:not(.wheel-slice):not(.atlas-pin):focus-visible {
   outline: 2px solid var(--brass-500);
   outline-offset: 2px;
 }
@@ -2053,9 +2053,9 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
 /* World Coffee Atlas */
 .atlas-map-layout {
   display: grid;
-  grid-template-columns: 1.35fr 0.85fr;
+  grid-template-columns: 1.32fr 0.88fr;
   gap: 24px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .atlas-map-card,
@@ -2069,12 +2069,22 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   box-shadow: var(--shadow-soft);
 }
 
+.atlas-map-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.atlas-dossier-card {
+  display: flex;
+  flex-direction: column;
+}
+
 .atlas-map-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 14px;
   flex-wrap: wrap;
 }
 
@@ -2092,8 +2102,22 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   height: auto;
 }
 
-.atlas-pin {
+.atlas-pin,
+.wheel-slice {
   cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.atlas-pin:focus,
+.wheel-slice:focus {
+  outline: none;
+}
+
+.atlas-pin:focus-visible,
+.wheel-slice:focus-visible {
+  outline: none;
+  filter: drop-shadow(0 0 6px rgba(199, 147, 85, 0.9));
 }
 
 .atlas-pin circle {
@@ -2104,6 +2128,127 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   transform-box: fill-box;
   transform-origin: center;
   animation: pinRipple 1.8s ease-out infinite;
+}
+
+.atlas-belt-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.atlas-belt-card {
+  text-align: left;
+  padding: 12px 13px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--paper-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.atlas-belt-card:hover {
+  border-color: var(--border-brass);
+  transform: translateY(-1px);
+}
+
+.atlas-belt-card.active {
+  border-color: var(--brass-600);
+  background: var(--paper-warm);
+  box-shadow: inset 0 0 0 1px rgba(184, 132, 70, 0.28);
+}
+
+.atlas-belt-title {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--espresso-950);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.atlas-belt-desc {
+  font-size: 0.74rem;
+  color: var(--espresso-600);
+  line-height: 1.45;
+}
+
+.atlas-climate-strip {
+  margin-top: auto;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.atlas-altitude-track {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d7c3a2 0%, #c79355 50%, #6f4222 100%);
+  overflow: visible;
+}
+
+.atlas-altitude-marker {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--espresso-950);
+  border: 2.5px solid var(--paper-surface);
+  box-shadow: 0 1px 4px rgba(34, 21, 14, 0.35);
+  transform: translate(-50%, -50%);
+  transition: left 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.calc-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.calc-preset-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 9px 11px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--paper-bg);
+  text-align: left;
+  transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.16s ease;
+}
+
+.calc-preset-btn:hover {
+  border-color: var(--border-brass);
+  transform: translateY(-1px);
+}
+
+.calc-preset-btn.active {
+  background: var(--espresso-950);
+  color: var(--paper-surface);
+  border-color: var(--espresso-950);
+}
+
+.calc-preset-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.calc-preset-hint {
+  font-size: 0.7rem;
+  opacity: 0.76;
+  font-family: var(--font-mono);
 }
 
 .atlas-mini-exhibit {
@@ -2664,7 +2809,8 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .taste-preset-grid {
+  .taste-preset-grid,
+  .calc-preset-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2816,7 +2962,8 @@ input[type='range'].museum-range::-webkit-slider-thumb:hover {
   .gallery-grid,
   .archive-grid,
   .scenario-strip,
-  .troubleshoot-symptom-grid {
+  .troubleshoot-symptom-grid,
+  .atlas-belt-grid {
     grid-template-columns: 1fr;
   }
 

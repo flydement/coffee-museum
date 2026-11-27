@@ -7,11 +7,57 @@ import {
   PROCESS_GUIDES,
   ROAST_STAGES,
   type CoffeeTriviaQuestion,
+  type OriginRegion,
 } from '../data/atlas'
 import { COFFEE_EXHIBITS } from '../data/coffees'
 import type { AtlasSection, CoffeeExhibit } from '../types/coffee'
+import {
+  BEAN_CAFFEINE_OPTIONS,
+  BREW_CALC_PRESETS,
+  calculateBrewMetrics,
+  type BeanCaffeineTypeId,
+  type BrewCalcStyleId,
+} from '../utils/calculator'
 import { playGentleChime } from '../utils/platform'
 import { CupEmblem } from './Icons'
+
+type BeltFilterId = 'all' | 'africa' | 'americas' | 'asia-pacific'
+
+interface BeltSummary {
+  id: Exclude<BeltFilterId, 'all'>
+  title: string
+  range: string
+  flavor: string
+  defaultOriginId: string
+  continents: OriginRegion['continent'][]
+}
+
+const COFFEE_BELT_SUMMARIES: BeltSummary[] = [
+  {
+    id: 'africa',
+    title: '非洲 · 东非高地',
+    range: '1,650 – 2,200 m',
+    flavor: '茉莉白花 · 黑醋栗与明亮果汁酸',
+    defaultOriginId: 'ethiopia',
+    continents: ['非洲'],
+  },
+  {
+    id: 'americas',
+    title: '美洲 · 安第斯与火山带',
+    range: '1,000 – 1,950 m',
+    flavor: '玫瑰蜜感 · 烤坚果与焦糖巧克力',
+    defaultOriginId: 'colombia',
+    continents: ['中美洲与加勒比', '南美洲'],
+  },
+  {
+    id: 'asia-pacific',
+    title: '亚太与地中海风土',
+    range: '450 – 2,400 m',
+    flavor: '东方野蜜茶韵 · 雪松草本与复古器具',
+    defaultOriginId: 'yunnan',
+    continents: ['亚洲', '太平洋与大洋洲', '欧洲与地中海'],
+  },
+]
 
 interface CoffeeAtlasProps {
   onInspect: (coffee: CoffeeExhibit) => void
@@ -46,12 +92,14 @@ export function CoffeeAtlas({
     onChangeSection?.(next)
   }
   const [selectedOriginId, setSelectedOriginId] = useState<string>(COFFEE_ORIGINS[0].id)
+  const [beltFilter, setBeltFilter] = useState<BeltFilterId>('all')
+  const [dossierExpanded, setDossierExpanded] = useState<boolean>(false)
   const [selectedWheelId, setSelectedWheelId] = useState<string>(FLAVOR_WHEEL_FAMILIES[0].id)
   const [wheelExpanded, setWheelExpanded] = useState<boolean>(false)
+  const [calcStyle, setCalcStyle] = useState<BrewCalcStyleId>('pourover')
   const [calcDose, setCalcDose] = useState<number>(15)
-  const [calcRatio, setCalcRatio] = useState<number>(15)
-  const [calcEspressoRatio, setCalcEspressoRatio] = useState<number>(2.0)
-  const [calcStyle, setCalcStyle] = useState<'pourover' | 'coldbrew' | 'espresso'>('pourover')
+  const [calcSecond, setCalcSecond] = useState<number>(15)
+  const [calcBeanType, setCalcBeanType] = useState<BeanCaffeineTypeId>('arabica')
   const [selectedRoast, setSelectedRoast] = useState<number>(2)
   const [selectedProcessId, setSelectedProcessId] = useState<string>(PROCESS_GUIDES[0].id)
   const [selectedCaseId, setSelectedCaseId] = useState<string>(BREW_TROUBLESHOOT_CASES[0].id)
@@ -69,6 +117,35 @@ export function CoffeeAtlas({
     () => COFFEE_ORIGINS.find((o) => o.id === selectedOriginId) ?? COFFEE_ORIGINS[0],
     [selectedOriginId]
   )
+
+  const selectOrigin = (originId: string) => {
+    setSelectedOriginId(originId)
+    setDossierExpanded(false)
+    playGentleChime('tick')
+  }
+
+  const matchesBelt = (origin: OriginRegion, filter: BeltFilterId): boolean => {
+    if (filter === 'all') return true
+    const belt = COFFEE_BELT_SUMMARIES.find((b) => b.id === filter)
+    return belt ? belt.continents.includes(origin.continent) : true
+  }
+
+  const filteredOrigins = useMemo(
+    () => COFFEE_ORIGINS.filter((o) => matchesBelt(o, beltFilter)),
+    [beltFilter]
+  )
+
+  // Render active pin last so highlighted dot & label always stay cleanly on top in SVG order
+  const orderedMapOrigins = useMemo(() => {
+    const rest = COFFEE_ORIGINS.filter((o) => o.id !== selectedOrigin.id)
+    return [...rest, selectedOrigin]
+  }, [selectedOrigin])
+
+  const altitudePercent = useMemo(() => {
+    if (!selectedOrigin.altitudeMidM) return null
+    const clamped = Math.min(Math.max(selectedOrigin.altitudeMidM, 450), 2400)
+    return Math.round(((clamped - 450) / (2400 - 450)) * 100)
+  }, [selectedOrigin.altitudeMidM])
 
   const originExhibits = useMemo(() => {
     return COFFEE_EXHIBITS.filter((c) =>
@@ -117,46 +194,10 @@ export function CoffeeAtlas({
     })
   }, [activeWheelFamily])
 
-  const calcResult = useMemo(() => {
-    const effectiveRatio =
-      calcStyle === 'espresso'
-        ? calcEspressoRatio
-        : calcStyle === 'coldbrew'
-          ? Math.min(Math.max(calcRatio, 8), 12)
-          : Math.min(Math.max(calcRatio, 12), 18)
-    const totalWater = Math.round(calcDose * effectiveRatio)
-    const bloomWater = calcStyle === 'pourover' ? Math.round(calcDose * 2.2) : 0
-    const yieldMl =
-      calcStyle === 'espresso'
-        ? totalWater
-        : Math.max(0, Math.round(totalWater - calcDose * 2))
-    const espressoShotLabel =
-      calcEspressoRatio <= 1.7
-        ? '精萃 Ristretto'
-        : calcEspressoRatio >= 2.3
-          ? '长萃 Lungo'
-          : '标准 Espresso'
-    const espressoTimeWindow =
-      calcEspressoRatio <= 1.7
-        ? '22 – 26 秒'
-        : calcEspressoRatio >= 2.3
-          ? '28 – 34 秒'
-          : '25 – 30 秒'
-    // Average Arabica caffeine ~11mg/g bean extracted at ~78%-88% efficiency
-    const mgPerGram = calcStyle === 'coldbrew' ? 9.8 : calcStyle === 'espresso' ? 8.2 : 9.2
-    const estCaffeineMg = Math.round(calcDose * mgPerGram)
-    const dailyPct = Math.min(100, Math.round((estCaffeineMg / 400) * 100))
-    return {
-      effectiveRatio,
-      totalWater,
-      bloomWater,
-      yieldMl,
-      espressoShotLabel,
-      espressoTimeWindow,
-      estCaffeineMg,
-      dailyPct,
-    }
-  }, [calcDose, calcEspressoRatio, calcRatio, calcStyle])
+  const calcResult = useMemo(
+    () => calculateBrewMetrics(calcStyle, calcDose, calcSecond, calcBeanType),
+    [calcBeanType, calcDose, calcSecond, calcStyle]
+  )
 
   const processExhibits = useMemo(
     () =>
@@ -248,10 +289,26 @@ export function CoffeeAtlas({
                   THE BEAN BELT · 23.5°N — 23.5°S
                 </span>
                 <div style={{ fontSize: '0.84rem', color: 'var(--espresso-600)', marginTop: 2 }}>
-                  点击地图上的金色坐标点，探索全球 {COFFEE_ORIGINS.length} 大咖啡风土与馆藏对应豆单
+                  点击地图坐标或下方风土带，探索全球 {COFFEE_ORIGINS.length} 大产区与 {COFFEE_EXHIBITS.length} 款馆藏豆单
                 </div>
               </div>
-              <span className="tag tag-brass mono">点击坐标交互</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ padding: '5px 10px', fontSize: '0.76rem' }}
+                  onClick={() => {
+                    const others = COFFEE_ORIGINS.filter((o) => o.id !== selectedOrigin.id)
+                    const next = others[Math.floor(Math.random() * others.length)]
+                    if (next) {
+                      setBeltFilter('all')
+                      selectOrigin(next.id)
+                    }
+                  }}
+                >
+                  随机环游产区
+                </button>
+              </div>
             </div>
 
             <div className="atlas-svg-wrap">
@@ -331,9 +388,13 @@ export function CoffeeAtlas({
                   <path d="M718 282 L796 278 L818 322 L788 354 L732 344 L710 314 Z" />
                 </g>
 
-                {/* Interactive Origin Pins */}
-                {COFFEE_ORIGINS.map((origin) => {
+                {/* Interactive Origin Pins (Collision-free directional labels + delicate leader lines) */}
+                {orderedMapOrigins.map((origin) => {
                   const active = origin.id === selectedOrigin.id
+                  const inBelt = matchesBelt(origin, beltFilter)
+                  const dist = Math.hypot(origin.labelDx, origin.labelDy)
+                  const showLeader = dist > 17
+                  const shortName = origin.name.split('·')[0].trim()
                   return (
                     <g
                       key={origin.id}
@@ -341,41 +402,57 @@ export function CoffeeAtlas({
                       className="atlas-pin"
                       role="button"
                       tabIndex={0}
+                      opacity={active || inBelt ? 1 : 0.34}
                       aria-label={`查看产区 ${origin.name}`}
-                      onClick={() => {
-                        setSelectedOriginId(origin.id)
-                        playGentleChime('tick')
-                      }}
+                      onClick={() => selectOrigin(origin.id)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
-                          setSelectedOriginId(origin.id)
+                          selectOrigin(origin.id)
                         }
                       }}
                     >
                       <circle r="16" fill="transparent" />
+                      {showLeader && (
+                        <line
+                          x1="0"
+                          y1="0"
+                          x2={origin.labelDx * 0.78}
+                          y2={origin.labelDy * 0.78}
+                          stroke={active ? 'var(--brass-600)' : 'var(--border-strong)'}
+                          strokeWidth={active ? '1.3' : '0.9'}
+                          strokeDasharray={active ? 'none' : '2 2'}
+                          style={{ pointerEvents: 'none' }}
+                        />
+                      )}
                       {active && (
                         <circle
-                          r="18"
+                          r="17"
                           fill="rgba(199, 147, 85, 0.28)"
                           className="atlas-pin-pulse"
                         />
                       )}
                       <circle
-                        r={active ? 8.5 : 6.2}
+                        r={active ? 8 : 5.6}
                         fill={active ? 'var(--brass-600)' : 'var(--espresso-900)'}
                         stroke="var(--paper-surface)"
-                        strokeWidth="2.2"
+                        strokeWidth="2.1"
                       />
                       <text
-                        y={active ? -14 : -11}
-                        textAnchor="middle"
-                        fontSize={active ? '11.5' : '10'}
+                        x={origin.labelDx}
+                        y={origin.labelDy}
+                        textAnchor={origin.labelAnchor}
+                        dominantBaseline="middle"
+                        fontSize={active ? '11.8' : '10.4'}
                         fontWeight={active ? '700' : '600'}
-                        fill={active ? 'var(--brass-700)' : 'var(--espresso-800)'}
+                        fill={active ? 'var(--brass-700)' : 'var(--espresso-900)'}
+                        stroke="var(--paper-surface)"
+                        strokeWidth="3.6"
+                        strokeLinejoin="round"
+                        paintOrder="stroke"
                         style={{ pointerEvents: 'none' }}
                       >
-                        {origin.name.split('·')[0].trim()}
+                        {shortName}
                       </text>
                     </g>
                   )
@@ -383,19 +460,144 @@ export function CoffeeAtlas({
               </svg>
             </div>
 
-            {/* Quick origin chip selector below map for touch accessibility */}
-            <div className="pill-row" style={{ marginTop: 14 }}>
-              {COFFEE_ORIGINS.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  className={`mood-pill ${o.id === selectedOrigin.id ? 'active' : ''}`}
-                  style={{ padding: '5px 11px', fontSize: '0.78rem' }}
-                  onClick={() => setSelectedOriginId(o.id)}
-                >
-                  {o.name.split('·')[0].trim()}
-                </button>
-              ))}
+            {/* Region Belt Filter & Quick Origin Selector */}
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  marginBottom: 10,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--espresso-600)' }}>
+                  产区快捷直达（{filteredOrigins.length} / {COFFEE_ORIGINS.length}）
+                </span>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {[
+                    { id: 'all' as const, label: '全部产区' },
+                    { id: 'africa' as const, label: '非洲' },
+                    { id: 'americas' as const, label: '美洲' },
+                    { id: 'asia-pacific' as const, label: '亚太与欧洲' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      className={`filter-pill ${beltFilter === tab.id ? 'active' : ''}`}
+                      style={{ padding: '3px 10px', fontSize: '0.74rem' }}
+                      onClick={() => {
+                        setBeltFilter(tab.id)
+                        if (tab.id !== 'all' && !matchesBelt(selectedOrigin, tab.id)) {
+                          const targetBelt = COFFEE_BELT_SUMMARIES.find((b) => b.id === tab.id)
+                          if (targetBelt) selectOrigin(targetBelt.defaultOriginId)
+                        }
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pill-row">
+                {filteredOrigins.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    className={`mood-pill ${o.id === selectedOrigin.id ? 'active' : ''}`}
+                    style={{ padding: '5px 11px', fontSize: '0.78rem' }}
+                    onClick={() => selectOrigin(o.id)}
+                  >
+                    {o.name.split('·')[0].trim()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Three Major Coffee Belt Guides (Symmetrical Enrichment) */}
+            <div className="atlas-belt-grid" aria-label="全球三大咖啡风土带概览">
+              {COFFEE_BELT_SUMMARIES.map((belt) => {
+                const isBeltActive =
+                  beltFilter === belt.id ||
+                  (beltFilter === 'all' && belt.continents.includes(selectedOrigin.continent))
+                return (
+                  <button
+                    key={belt.id}
+                    type="button"
+                    className={`atlas-belt-card ${isBeltActive ? 'active' : ''}`}
+                    onClick={() => {
+                      setBeltFilter(beltFilter === belt.id ? 'all' : belt.id)
+                      if (!belt.continents.includes(selectedOrigin.continent)) {
+                        selectOrigin(belt.defaultOriginId)
+                      }
+                    }}
+                  >
+                    <div className="atlas-belt-title">
+                      <span>{belt.title}</span>
+                    </div>
+                    <span className="mono" style={{ fontSize: '0.7rem', color: 'var(--brass-700)' }}>
+                      {belt.range}
+                    </span>
+                    <span className="atlas-belt-desc">{belt.flavor}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Selected Origin Altitude Ruler & Microclimate Archival Strip */}
+            <div className="atlas-climate-strip">
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--espresso-600)', fontWeight: 600 }}>
+                    当前产区微气候签名 · {selectedOrigin.name.split('·')[0].trim()}
+                  </div>
+                  <div style={{ fontSize: '0.86rem', color: 'var(--espresso-950)', fontWeight: 600, marginTop: 2 }}>
+                    {selectedOrigin.climate}
+                  </div>
+                </div>
+                <span className="tag tag-brass mono" style={{ fontSize: '0.74rem' }}>
+                  {selectedOrigin.altitude}
+                </span>
+              </div>
+
+              {altitudePercent !== null ? (
+                <div>
+                  <div className="atlas-altitude-track" aria-hidden="true">
+                    <span
+                      className="atlas-altitude-marker"
+                      style={{ left: `${altitudePercent}%` }}
+                    />
+                  </div>
+                  <div
+                    className="mono"
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '0.68rem',
+                      color: 'var(--espresso-500)',
+                      marginTop: 6,
+                    }}
+                  >
+                    <span>450m 海岛火山</span>
+                    <span>1,350m 经典中海拔</span>
+                    <span>2,400m 云雾极高海拔</span>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.76rem', color: 'var(--espresso-600)' }}>
+                  人文器具摇篮产区：以意式蒸汽萃取、摩卡壶微压、维也纳雪顶与奥斯曼铜壶闻名世界。
+                </div>
+              )}
             </div>
           </div>
 
@@ -411,11 +613,11 @@ export function CoffeeAtlas({
               {selectedOrigin.englishName}
             </p>
 
-            <div className="specimen-curator-box" style={{ margin: '0 0 16px' }}>
+            <div className="specimen-curator-box" style={{ margin: '0 0 14px' }}>
               {selectedOrigin.story}
             </div>
 
-            <div className="spec-kpi-grid" style={{ margin: '0 0 16px' }}>
+            <div className="spec-kpi-grid" style={{ margin: '0 0 14px' }}>
               <div className="spec-kpi">
                 <span className="spec-kpi-label">代表海拔</span>
                 <span className="spec-kpi-value" style={{ fontSize: '0.94rem' }}>
@@ -437,12 +639,42 @@ export function CoffeeAtlas({
               </div>
             </div>
 
-            <div>
-              <div style={{ fontSize: '0.84rem', fontWeight: 600, marginBottom: 10 }}>
-                本馆收录产区展品（{originExhibits.length} 款）
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  marginBottom: 10,
+                }}
+              >
+                <span style={{ fontSize: '0.84rem', fontWeight: 600 }}>
+                  本馆收录产区展品（共 {originExhibits.length} 款
+                  {originExhibits.length > 4 && !dossierExpanded ? '，展示前 4 款' : ''}）
+                </span>
+                {originExhibits.length > 4 && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ padding: '3px 9px', fontSize: '0.74rem' }}
+                    onClick={() => setDossierExpanded((v) => !v)}
+                  >
+                    {dossierExpanded ? '收起 ↑' : `展开全部 ${originExhibits.length} 款 ↓`}
+                  </button>
+                )}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {originExhibits.slice(0, 6).map((c) => (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 9,
+                  maxHeight: dossierExpanded ? 380 : 'none',
+                  overflowY: dossierExpanded ? 'auto' : 'visible',
+                  paddingRight: dossierExpanded ? 4 : 0,
+                }}
+              >
+                {(dossierExpanded ? originExhibits : originExhibits.slice(0, 4)).map((c) => (
                   <div key={c.id} className="atlas-mini-exhibit">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                       <CupEmblem
@@ -551,10 +783,10 @@ export function CoffeeAtlas({
                     return (
                       <g
                         key={fam.id}
+                        className="wheel-slice"
                         role="button"
                         tabIndex={0}
                         aria-label={`选择风味家族：${fam.name}`}
-                        style={{ cursor: 'pointer' }}
                         onClick={() => {
                           setSelectedWheelId(fam.id)
                           setWheelExpanded(false)
@@ -714,31 +946,64 @@ export function CoffeeAtlas({
             </div>
           </section>
 
-          {/* Universal Golden Ratio & Caffeine Estimator */}
-          <section className="atlas-craft-card" aria-label="万能手冲粉水比与咖啡因计算器">
-            <p className="eyebrow">BREW RATIO & CAFFEINE CALCULATOR · 万能粉水与咖啡因估算</p>
-            <h2 className="section-heading" style={{ fontSize: '1.4rem', marginBottom: 14 }}>
-              手头有一包任意咖啡豆？快速换算黄金粉水与咖啡因
-            </h2>
+          {/* Universal Golden Ratio & Caffeine Estimator (8 Categories + 3 Bean Types) */}
+          <section className="atlas-craft-card" aria-label="万能粉水比与咖啡因计算器">
+            <div className="atlas-map-header" style={{ marginBottom: 14 }}>
+              <div>
+                <p className="eyebrow" style={{ marginBottom: 4 }}>
+                  BREW RATIO & CAFFEINE CALCULATOR · 万能粉水与咖啡因估算
+                </p>
+                <h2 className="section-heading" style={{ fontSize: '1.4rem', marginBottom: 0 }}>
+                  手头有一包任意咖啡豆？8 大冲煮品类一键换算黄金比例与咖啡因
+                </h2>
+              </div>
+              <span className="tag tag-brass mono">{calcResult.styleBadge}</span>
+            </div>
 
-            <div className="pill-row" style={{ marginBottom: 18 }}>
-              {[
-                { id: 'pourover' as const, label: '手冲 / 聪明杯 / 法压 (1:12 – 1:18)' },
-                { id: 'coldbrew' as const, label: '冰滴 / 低温冷萃 (1:8 – 1:12)' },
-                { id: 'espresso' as const, label: '意式浓缩 Espresso (1:1.5 – 1:2.5)' },
-              ].map((m) => (
+            <div className="calc-preset-grid" role="group" aria-label="选择冲煮品类">
+              {BREW_CALC_PRESETS.map((preset) => (
                 <button
-                  key={m.id}
+                  key={preset.id}
                   type="button"
-                  className={`filter-pill ${calcStyle === m.id ? 'active' : ''}`}
+                  className={`calc-preset-btn ${calcStyle === preset.id ? 'active' : ''}`}
                   onClick={() => {
-                    setCalcStyle(m.id)
-                    if (m.id === 'pourover') setCalcRatio(15)
-                    else if (m.id === 'coldbrew') setCalcRatio(10)
-                    else setCalcEspressoRatio(2.0)
+                    setCalcStyle(preset.id)
+                    setCalcDose(preset.defaultDose)
+                    setCalcSecond(preset.defaultSecond)
+                    playGentleChime('tick')
                   }}
                 >
-                  {m.label}
+                  <span className="calc-preset-name">{preset.shortLabel}</span>
+                  <span className="calc-preset-hint">{preset.ratioHint}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Bean Species Caffeine Calibration */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flexWrap: 'wrap',
+                marginBottom: 16,
+              }}
+            >
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--espresso-600)' }}>
+                豆种咖啡因校准：
+              </span>
+              {BEAN_CAFFEINE_OPTIONS.map((bean) => (
+                <button
+                  key={bean.id}
+                  type="button"
+                  className={`filter-pill ${calcBeanType === bean.id ? 'active' : ''}`}
+                  style={{ padding: '4px 11px', fontSize: '0.76rem' }}
+                  onClick={() => {
+                    setCalcBeanType(bean.id)
+                    playGentleChime('tick')
+                  }}
+                >
+                  {bean.label}
                 </button>
               ))}
             </div>
@@ -747,101 +1012,99 @@ export function CoffeeAtlas({
               <div>
                 <div className="slider-item">
                   <div className="slider-meta">
-                    <span className="slider-name">咖啡豆粉量</span>
-                    <span className="slider-val">{calcDose} g</span>
+                    <span className="slider-name">咖啡豆粉量（{calcResult.preset.label}）</span>
+                    <span className="slider-val">{calcResult.clampedDose} g</span>
                   </div>
                   <input
                     type="range"
-                    min={10}
-                    max={40}
+                    min={calcResult.preset.minDose}
+                    max={calcResult.preset.maxDose}
                     step={1}
-                    value={calcDose}
+                    value={calcResult.clampedDose}
                     className="museum-range"
                     style={{
-                      background: `linear-gradient(to right, var(--brass-600) ${((calcDose - 10) / 30) * 100}%, var(--paper-warm) ${((calcDose - 10) / 30) * 100}%)`,
+                      background: `linear-gradient(to right, var(--brass-600) ${
+                        ((calcResult.clampedDose - calcResult.preset.minDose) /
+                          (calcResult.preset.maxDose - calcResult.preset.minDose)) *
+                        100
+                      }%, var(--paper-warm) ${
+                        ((calcResult.clampedDose - calcResult.preset.minDose) /
+                          (calcResult.preset.maxDose - calcResult.preset.minDose)) *
+                        100
+                      }%)`,
                     }}
                     onChange={(e) => setCalcDose(Number(e.target.value))}
                   />
                 </div>
 
-                {calcStyle === 'espresso' ? (
-                  <div className="slider-item" style={{ marginBottom: 0 }}>
-                    <div className="slider-meta">
-                      <span className="slider-name">粉液比例 · {calcResult.espressoShotLabel}</span>
-                      <span className="slider-val">1 : {calcResult.effectiveRatio.toFixed(1)}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={1.5}
-                      max={2.5}
-                      step={0.1}
-                      value={calcEspressoRatio}
-                      className="museum-range"
-                      style={{
-                        background: `linear-gradient(to right, var(--brass-600) ${((calcEspressoRatio - 1.5) / 1) * 100}%, var(--paper-warm) ${((calcEspressoRatio - 1.5) / 1) * 100}%)`,
-                      }}
-                      onChange={(e) => setCalcEspressoRatio(Number(e.target.value))}
-                    />
+                <div className="slider-item" style={{ marginBottom: 14 }}>
+                  <div className="slider-meta">
+                    <span className="slider-name">
+                      {calcResult.preset.secondMode === 'milk-ml'
+                        ? '加入鲜奶 / 燕麦奶量'
+                        : calcStyle === 'espresso'
+                          ? `粉液比例 · ${calcResult.styleBadge}`
+                          : '粉水比例'}
+                    </span>
+                    <span className="slider-val">
+                      {calcResult.preset.secondMode === 'milk-ml'
+                        ? `${calcResult.clampedSecond} ml`
+                        : `1 : ${
+                            calcResult.preset.stepSecond < 1
+                              ? calcResult.clampedSecond.toFixed(1)
+                              : calcResult.clampedSecond
+                          }`}
+                    </span>
                   </div>
-                ) : (
-                  <div className="slider-item" style={{ marginBottom: 0 }}>
-                    <div className="slider-meta">
-                      <span className="slider-name">粉水比例</span>
-                      <span className="slider-val">1 : {calcResult.effectiveRatio}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={calcStyle === 'coldbrew' ? 8 : 12}
-                      max={calcStyle === 'coldbrew' ? 12 : 18}
-                      step={0.5}
-                      value={calcResult.effectiveRatio}
-                      className="museum-range"
-                      style={{
-                        background: `linear-gradient(to right, var(--brass-600) ${
-                          calcStyle === 'coldbrew'
-                            ? ((calcResult.effectiveRatio - 8) / 4) * 100
-                            : ((calcResult.effectiveRatio - 12) / 6) * 100
-                        }%, var(--paper-warm) ${
-                          calcStyle === 'coldbrew'
-                            ? ((calcResult.effectiveRatio - 8) / 4) * 100
-                            : ((calcResult.effectiveRatio - 12) / 6) * 100
-                        }%)`,
-                      }}
-                      onChange={(e) => setCalcRatio(Number(e.target.value))}
-                    />
+                  <input
+                    type="range"
+                    min={calcResult.preset.minSecond}
+                    max={calcResult.preset.maxSecond}
+                    step={calcResult.preset.stepSecond}
+                    value={calcResult.clampedSecond}
+                    className="museum-range"
+                    style={{
+                      background: `linear-gradient(to right, var(--brass-600) ${
+                        ((calcResult.clampedSecond - calcResult.preset.minSecond) /
+                          (calcResult.preset.maxSecond - calcResult.preset.minSecond)) *
+                        100
+                      }%, var(--paper-warm) ${
+                        ((calcResult.clampedSecond - calcResult.preset.minSecond) /
+                          (calcResult.preset.maxSecond - calcResult.preset.minSecond)) *
+                        100
+                      }%)`,
+                    }}
+                    onChange={(e) => setCalcSecond(Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="barista-tip-box" style={{ margin: 0, fontSize: '0.82rem' }}>
+                  <div>
+                    <strong>建议水温 / 节奏：</strong>
+                    {calcResult.preset.tempGuide}
                   </div>
-                )}
+                  <div style={{ marginTop: 4 }}>
+                    <strong>建议研磨度：</strong>
+                    {calcResult.preset.grindGuide}
+                  </div>
+                </div>
               </div>
 
               <div className="spec-kpi-grid" style={{ margin: 0 }}>
                 <div className="spec-kpi">
-                  <span className="spec-kpi-label">
-                    {calcStyle === 'espresso' ? '目标浓缩液重' : '建议总注水量'}
-                  </span>
-                  <span className="spec-kpi-value">
-                    {calcStyle === 'espresso'
-                      ? `${calcResult.totalWater} g`
-                      : `${calcResult.totalWater} ml`}
+                  <span className="spec-kpi-label">{calcResult.primaryMetricLabel}</span>
+                  <span className="spec-kpi-value">{calcResult.primaryMetricValue}</span>
+                </div>
+                <div className="spec-kpi">
+                  <span className="spec-kpi-label">{calcResult.secondaryMetricLabel}</span>
+                  <span className="spec-kpi-value" style={{ fontSize: '0.96rem' }}>
+                    {calcResult.secondaryMetricValue}
                   </span>
                 </div>
                 <div className="spec-kpi">
                   <span className="spec-kpi-label">
-                    {calcStyle === 'espresso'
-                      ? '建议萃取时间'
-                      : calcResult.bloomWater > 0
-                        ? `建议闷蒸水（净出杯 ≈${calcResult.yieldMl}ml）`
-                        : '预估净出杯量'}
+                    预估咖啡因（{calcResult.beanOption.shortLabel}）
                   </span>
-                  <span className="spec-kpi-value">
-                    {calcStyle === 'espresso'
-                      ? calcResult.espressoTimeWindow
-                      : calcResult.bloomWater > 0
-                        ? `${calcResult.bloomWater} ml`
-                        : `${calcResult.yieldMl} ml`}
-                  </span>
-                </div>
-                <div className="spec-kpi">
-                  <span className="spec-kpi-label">预估咖啡因含量</span>
                   <span className="spec-kpi-value">≈ {calcResult.estCaffeineMg} mg</span>
                 </div>
                 <div className="spec-kpi">
