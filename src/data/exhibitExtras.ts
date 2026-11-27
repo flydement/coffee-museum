@@ -165,6 +165,46 @@ export const EXHIBIT_EXTRAS: Record<string, ExhibitEditorialExtra> = {
     tastingWindow: '放流完毕后略凉至 60°C，红醋栗与红茶甜感最为明亮',
     fortune: '找到聪明省力的方法，好结果自然水到渠成。',
   },
+  'yunnan-puer-wildflower-honey': {
+    pairing: '云南鲜花饼 / 蜂蜜黄油吐司',
+    tastingWindow: '从 65°C 热饮花香品到 52°C，百花野蜜与熟黄桃甜感最为充盈',
+    fortune: '山野百花自有酝酿的时节，今日你的温柔坚持会结出清甜回甘。',
+  },
+  'colombia-rose-valley-v60': {
+    pairing: '玫瑰荔枝马卡龙 / 白桃千层蛋糕',
+    tastingWindow: '入杯晃香后趁 58°C 细啜，玫瑰花露与水蜜桃乌龙茶韵同步绽放',
+    fortune: '自带芬芳的人走到哪里都会被温柔看见，愿今日浪漫如约而至。',
+  },
+  'salted-caramel-macchiato': {
+    pairing: '海盐焦糖布朗尼 / 核桃肉桂卷',
+    tastingWindow: '趁热不搅拌，第一口穿过微咸焦糖奶泡直触浓香浓缩层',
+    fortune: '一点恰到好处的微咸，反而衬出生活最动人的甘甜。',
+  },
+  'hk-yuanyang-milk-coffee': {
+    pairing: '冰火菠萝油 / 港式酥皮蛋挞',
+    tastingWindow: '65°C 趁热大口品饮，锡兰红茶厚韵与曼特宁奶香一秒回魂',
+    fortune: '兼容并蓄总能碰撞出经典，今天的跨界灵感会带来意外惊喜。',
+  },
+  'muscat-grape-coldbrew': {
+    pairing: '青柠芝士挞 / 椰子脆片饼干',
+    tastingWindow: '先定格翡翠琥珀双层，搅匀青提果肉后趁气泡最绵密畅饮',
+    fortune: '把烦闷交给冰块与细密气泡，轻盈出发便是一路好风景。',
+  },
+  'espresso-tonic-citrus': {
+    pairing: '迷迭香海盐佛卡夏 / 西柚果干司康',
+    tastingWindow: '趁冰块清脆、气泡跳动时沿西柚香杯口大口冰爽品饮',
+    fortune: '微苦之后是通透清亮，今天的难题终会化作清醒利落的答卷。',
+  },
+  'el-salvador-pacamara-syphon': {
+    pairing: '无花果核桃欧包 / 黑糖年轮蛋糕',
+    tastingWindow: '虹吸回流后静置 1 分钟至 65°C，黑糖蜜与无花果干层次全开',
+    fortune: '沉淀越深，爆发出的甜度越令人惊艳——今天宜沉心静气。',
+  },
+  'ethiopia-guji-hambela-aeropress': {
+    pairing: '草莓奶油蛋糕卷 / 百香果巴斯克',
+    tastingWindow: '压毕略晃散去燥热，55°C 时草莓奶油与桂花蜜甜如同果汁',
+    fortune: '只需 100 秒专注发力，就能压出高光时刻——今日好运如花绽放！',
+  },
 }
 
 export function getDailyFeaturedIndex(total: number): number {

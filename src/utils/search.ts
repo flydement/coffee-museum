@@ -23,7 +23,7 @@ export const MUSEUM_SHORTCUT_ITEMS: MuseumShortcutItem[] = [
     id: 'hall-gallery',
     kind: 'hall',
     title: '世界咖啡馆藏展厅',
-    subtitle: '32 款永久馆藏检索、筛选与双豆对比',
+    subtitle: '40 款永久馆藏检索、筛选与双豆对比',
     keywords: ['展厅', '全部', '清单', '对比', 'gallery'],
     view: 'gallery',
   },
@@ -107,6 +107,14 @@ const SEARCH_SYNONYMS: Record<string, string[]> = {
   拿铁: ['latte'],
   抹茶: ['matcha'],
   蛋咖: ['蛋咖啡', 'phin'],
+  百花蜜: ['蜜处理', '野蜜', '普洱'],
+  浅中烘: ['中浅烘'],
+  浅中烘焙: ['中浅烘', '浅中烘焙'],
+  花魁: ['hambela', '古吉'],
+  鸳鸯: ['yuanyang', '港式'],
+  青提: ['muscat', '葡萄'],
+  汤力: ['tonic'],
+  玛奇朵: ['macchiato'],
 }
 
 function expandTokenAliases(token: string): string[] {
@@ -152,14 +160,25 @@ export function searchMuseumCatalog(
       }
 
       let score = 10
-      const expandedQuery = expandTokenAliases(q)
-      if (no === q || expandedQuery.some((term) => name.startsWith(term))) score += 60
-      else if (expandedQuery.some((term) => name.includes(term))) score += 42
-      if (expandedQuery.some((term) => en.includes(term))) score += 28
-      if (expandedQuery.some((term) => method.includes(term))) score += 24
-      if (expandedQuery.some((term) => origin.includes(term))) score += 22
-      if (expandedQuery.some((term) => notes.includes(term))) score += 20
-      if (expandedQuery.some((term) => process.includes(term) || roast.includes(term))) score += 14
+      for (const token of tokens) {
+        const aliases = expandTokenAliases(token)
+        if (no === token || name.startsWith(token)) score += 65
+        else if (name.includes(token)) score += 48
+        else if (aliases.some((term) => name.includes(term))) score += 32
+
+        if (en.includes(token)) score += 28
+        else if (aliases.some((term) => en.includes(term))) score += 18
+
+        if (notes.includes(token)) score += 26
+        else if (aliases.some((term) => notes.includes(term))) score += 14
+
+        if (origin.includes(token)) score += 22
+        else if (aliases.some((term) => origin.includes(term))) score += 12
+
+        if (method.includes(token)) score += 20
+        if (process.includes(token) || roast.includes(token)) score += 16
+        else if (aliases.some((term) => process.includes(term) || roast.includes(term))) score += 10
+      }
       return { coffee, score }
     })
     .filter((item) => item.score > 0)

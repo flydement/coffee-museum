@@ -29,10 +29,11 @@ import { buildMuseumHash, parseMuseumHash } from '../src/utils/router.ts'
 import { searchMuseumCatalog } from '../src/utils/search.ts'
 
 describe('Coffee Museum Catalog & Data Integrity', () => {
-  it('has 32 unique exhibits with valid steps, moods, and editorial extras', () => {
-    assert.equal(COFFEE_EXHIBITS.length, 32)
+  it('has 40 unique exhibits (10 per category) with valid steps, moods, and editorial extras', () => {
+    assert.equal(COFFEE_EXHIBITS.length, 40)
     const ids = new Set<string>()
     const nos = new Set<string>()
+    const categoryCounts = new Map<string, number>()
     const validMoods = new Set<string>(MOOD_FLAVOR_OPTIONS.map((m) => m.id))
 
     for (const coffee of COFFEE_EXHIBITS) {
@@ -40,6 +41,7 @@ describe('Coffee Museum Catalog & Data Integrity', () => {
       assert.ok(!nos.has(coffee.exhibitNo), `Duplicate exhibitNo: ${coffee.exhibitNo}`)
       ids.add(coffee.id)
       nos.add(coffee.exhibitNo)
+      categoryCounts.set(coffee.category, (categoryCounts.get(coffee.category) ?? 0) + 1)
 
       // Every exhibit must have editorial pairing/fortune metadata
       const extra = EXHIBIT_EXTRAS[coffee.id]
@@ -69,11 +71,22 @@ describe('Coffee Museum Catalog & Data Integrity', () => {
         }
       }
     }
+
+    assert.equal(categoryCounts.get('手冲黑咖'), 10)
+    assert.equal(categoryCounts.get('意式奶咖'), 10)
+    assert.equal(categoryCounts.get('冰爽特调'), 10)
+    assert.equal(categoryCounts.get('复古器具'), 10)
   })
 
-  it('covers 14 distinct brew methods and ensures monsoon-malabar pour-2 isPouring', () => {
+  it('covers 14 distinct brew methods, Yunnan Puer Wildflower Honey, and monsoon-malabar pour-2', () => {
     const methods = new Set(COFFEE_EXHIBITS.map((c) => c.method))
     assert.equal(methods.size, 14)
+
+    const yunnanHoney = COFFEE_EXHIBITS.find((c) => c.id === 'yunnan-puer-wildflower-honey')
+    assert.ok(yunnanHoney)
+    assert.equal(yunnanHoney.exhibitNo, 'EXH-33')
+    assert.equal(yunnanHoney.category, '手冲黑咖')
+    assert.ok(yunnanHoney.process.includes('蜜处理'))
 
     const monsoon = COFFEE_EXHIBITS.find((c) => c.id === 'monsoon-malabar-flannel')
     assert.ok(monsoon)
@@ -281,6 +294,15 @@ describe('Hash Routing, Quick Search & Archive Sanitization', () => {
 
     const byEnglish = searchMuseumCatalog('Geisha', COFFEE_EXHIBITS)
     assert.ok(byEnglish.exhibits.some((c) => c.id === 'panama-geisha'))
+
+    const byYunnanHoney = searchMuseumCatalog('云南 百花蜜', COFFEE_EXHIBITS)
+    assert.equal(byYunnanHoney.exhibits[0]?.id, 'yunnan-puer-wildflower-honey')
+
+    const byYunnanPuerHoney = searchMuseumCatalog('云南 普洱 百花蜜', COFFEE_EXHIBITS)
+    assert.equal(byYunnanPuerHoney.exhibits[0]?.id, 'yunnan-puer-wildflower-honey')
+
+    const byLightMedHoney = searchMuseumCatalog('浅中烘 蜜处理', COFFEE_EXHIBITS)
+    assert.ok(byLightMedHoney.exhibits.some((c) => c.id === 'yunnan-puer-wildflower-honey'))
 
     const byTool = searchMuseumCatalog('风味轮', COFFEE_EXHIBITS)
     assert.ok(byTool.shortcuts.some((s) => s.atlasSection === 'wheel'))

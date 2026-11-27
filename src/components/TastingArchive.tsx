@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { COFFEE_EXHIBITS } from '../data/coffees'
 import type {
   CoffeeExhibit,
@@ -659,69 +660,71 @@ export function TastingArchive({
       )}
 
       {/* Postcard Theme Preview Modal */}
-      {previewRec && (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-label="纪念明信片预览与导出"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setPreviewRec(null)
-          }}
-        >
-          <div className="specimen-modal" style={{ maxWidth: 520, textAlign: 'center' }}>
-            <button
-              type="button"
-              className="modal-close"
-              aria-label="关闭预览"
-              onClick={() => setPreviewRec(null)}
-            >
-              ×
-            </button>
-            <p className="eyebrow">{previewRec.catalogNumber} · 馆藏纪念明信片</p>
-            <h3 className="section-heading" style={{ fontSize: '1.35rem', marginBottom: 14 }}>
-              {previewRec.coffeeName}
-            </h3>
+      {previewRec &&
+        createPortal(
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-label="纪念明信片预览与导出"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setPreviewRec(null)
+            }}
+          >
+            <div className="specimen-modal" style={{ maxWidth: 520, textAlign: 'center' }}>
+              <button
+                type="button"
+                className="modal-close"
+                aria-label="关闭预览"
+                onClick={() => setPreviewRec(null)}
+              >
+                ×
+              </button>
+              <p className="eyebrow">{previewRec.catalogNumber} · 馆藏纪念明信片</p>
+              <h3 className="section-heading" style={{ fontSize: '1.35rem', marginBottom: 14 }}>
+                {previewRec.coffeeName}
+              </h3>
 
-            {previewDataUrl && (
-              <div className="postcard-preview-frame" style={{ maxWidth: 310 }}>
-                <img src={previewDataUrl} alt="馆藏明信片高清预览" />
+              {previewDataUrl && (
+                <div className="postcard-preview-frame" style={{ maxWidth: 310 }}>
+                  <img src={previewDataUrl} alt="馆藏明信片高清预览" />
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  margin: '16px 0',
+                }}
+              >
+                {POSTCARD_THEME_OPTIONS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`theme-swatch-btn ${postcardTheme === t.id ? 'active' : ''}`}
+                    onClick={() => setPostcardTheme(t.id)}
+                  >
+                    <span className="swatch-dot" style={{ background: t.swatch }} />
+                    <span>{t.label}</span>
+                  </button>
+                ))}
               </div>
-            )}
 
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: 8,
-                flexWrap: 'wrap',
-                margin: '16px 0',
-              }}
-            >
-              {POSTCARD_THEME_OPTIONS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={`theme-swatch-btn ${postcardTheme === t.id ? 'active' : ''}`}
-                  onClick={() => setPostcardTheme(t.id)}
-                >
-                  <span className="swatch-dot" style={{ background: t.swatch }} />
-                  <span>{t.label}</span>
-                </button>
-              ))}
+              <button
+                type="button"
+                className="btn btn-primary btn-lg"
+                style={{ width: '100%' }}
+                onClick={() => downloadTastingPostcard(previewRec, postcardTheme)}
+              >
+                下载高清 PNG 明信片
+              </button>
             </div>
-
-            <button
-              type="button"
-              className="btn btn-primary btn-lg"
-              style={{ width: '100%' }}
-              onClick={() => downloadTastingPostcard(previewRec, postcardTheme)}
-            >
-              下载高清 PNG 明信片
-            </button>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }

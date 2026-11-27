@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { EXHIBIT_EXTRAS } from '../data/exhibitExtras'
 import { COFFEE_EXHIBITS } from '../data/coffees'
 import type {
@@ -220,7 +221,7 @@ export function MuseumGallery({
               </button>
             ))}
 
-            <span style={{ opacity: 0.25, alignSelf: 'center' }}>|</span>
+            <span className="filter-row-divider" style={{ opacity: 0.25, alignSelf: 'center' }}>|</span>
 
             {[
               { id: 'all' as const, label: '全部温度' },
@@ -239,7 +240,7 @@ export function MuseumGallery({
               </button>
             ))}
 
-            <span style={{ opacity: 0.25, alignSelf: 'center' }}>|</span>
+            <span className="filter-row-divider" style={{ opacity: 0.25, alignSelf: 'center' }}>|</span>
 
             {[
               { id: 'all' as const, label: '全部难度' },
@@ -433,72 +434,79 @@ export function MuseumGallery({
       )}
 
       {/* Floating Comparison Bar */}
-      {comparePair.length > 0 && (
-        <div className="compare-bar" role="region" aria-label="馆藏对比栏">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span className="mono" style={{ fontSize: '0.76rem', color: 'var(--brass-700)', fontWeight: 600 }}>
-              风味对比台 ({comparePair.length}/2)
-            </span>
-            {comparePair.map((c) => (
-              <span key={c.id} className="tag tag-brass">
-                {c.name.split('·')[0].trim()}
+      {comparePair.length > 0 &&
+        createPortal(
+          <div className="compare-bar" role="region" aria-label="馆藏对比栏">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span className="mono" style={{ fontSize: '0.76rem', color: 'var(--brass-700)', fontWeight: 600 }}>
+                风味对比台 ({comparePair.length}/2)
               </span>
-            ))}
-            {comparePair.length === 1 && (
-              <span style={{ fontSize: '0.8rem', color: 'var(--espresso-600)' }}>
-                再选 1 款即可叠加五维风味图对比
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setCompareIds([])}
-            >
-              清空
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              disabled={comparePair.length < 2}
-              style={{ opacity: comparePair.length < 2 ? 0.5 : 1 }}
-              onClick={() => setShowCompareModal(true)}
-            >
-              开启双豆对比 →
-            </button>
-          </div>
-        </div>
-      )}
+              {comparePair.map((c) => (
+                <span key={c.id} className="tag tag-brass">
+                  {c.name.split('·')[0].trim()}
+                </span>
+              ))}
+              {comparePair.length === 1 && (
+                <span style={{ fontSize: '0.8rem', color: 'var(--espresso-600)' }}>
+                  再选 1 款即可叠加五维风味图对比
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setCompareIds([])}
+              >
+                清空
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={comparePair.length < 2}
+                style={{ opacity: comparePair.length < 2 ? 0.5 : 1 }}
+                onClick={() => setShowCompareModal(true)}
+              >
+                开启双豆对比 →
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Specimen Detail & Interactive Brew Calculator Modal */}
-      {inspectedCoffee && (
-        <SpecimenModal
-          coffee={inspectedCoffee}
-          servings={modalServings}
-          tastePreset={modalPreset}
-          onChangeServings={setModalServings}
-          onChangeTastePreset={setModalPreset}
-          onClose={() => onInspect(null)}
-          onStartBrew={(c, s, preset) => {
-            onInspect(null)
-            onStartBrew(c, s, preset)
-          }}
-        />
-      )}
+      {inspectedCoffee &&
+        createPortal(
+          <SpecimenModal
+            coffee={inspectedCoffee}
+            servings={modalServings}
+            tastePreset={modalPreset}
+            onChangeServings={setModalServings}
+            onChangeTastePreset={setModalPreset}
+            onClose={() => onInspect(null)}
+            onStartBrew={(c, s, preset) => {
+              onInspect(null)
+              onStartBrew(c, s, preset)
+            }}
+          />,
+          document.body
+        )}
 
       {/* Dual Exhibit Comparison Modal */}
-      {showCompareModal && comparePair.length === 2 && (
-        <CompareExhibitsModal
-          first={comparePair[0]}
-          second={comparePair[1]}
-          onClose={() => setShowCompareModal(false)}
-          onStartBrew={(c) => {
-            setShowCompareModal(false)
-            onStartBrew(c, 1, 'standard')
-          }}
-        />
-      )}
+      {showCompareModal &&
+        comparePair.length === 2 &&
+        createPortal(
+          <CompareExhibitsModal
+            first={comparePair[0]}
+            second={comparePair[1]}
+            onClose={() => setShowCompareModal(false)}
+            onStartBrew={(c) => {
+              setShowCompareModal(false)
+              onStartBrew(c, 1, 'standard')
+            }}
+          />,
+          document.body
+        )}
     </div>
   )
 }
@@ -535,52 +543,54 @@ function CompareExhibitsModal({
         </h2>
 
         <div className="specimen-grid" style={{ alignItems: 'center' }}>
-          <div>
-            <table className="compare-table">
-              <thead>
-                <tr>
-                  <th>对比维度</th>
-                  <th style={{ color: 'var(--brass-700)', fontWeight: 700 }}>
-                    ● {first.name.split('·')[0].trim()}
-                  </th>
-                  <th style={{ color: 'var(--sage-600)', fontWeight: 700 }}>
-                    ◆ {second.name.split('·')[0].trim()}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th>产区与处理</th>
-                  <td>{first.origin.split('·')[0]} · {first.process}</td>
-                  <td>{second.origin.split('·')[0]} · {second.process}</td>
-                </tr>
-                <tr>
-                  <th>烘焙与温度</th>
-                  <td>{first.roast} · {first.temperature}</td>
-                  <td>{second.roast} · {second.temperature}</td>
-                </tr>
-                <tr>
-                  <th>器具与水温</th>
-                  <td>{first.methodLabel} · {first.recipe.waterTempC}°C</td>
-                  <td>{second.methodLabel} · {second.recipe.waterTempC}°C</td>
-                </tr>
-                <tr>
-                  <th>标准粉水比</th>
-                  <td className="mono">{first.recipe.ratioLabel}</td>
-                  <td className="mono">{second.recipe.ratioLabel}</td>
-                </tr>
-                <tr>
-                  <th>研磨粗细</th>
-                  <td>刻度 {first.recipe.grindLevel}/10</td>
-                  <td>刻度 {second.recipe.grindLevel}/10</td>
-                </tr>
-                <tr>
-                  <th>核心风味调</th>
-                  <td>{first.flavorNotes.slice(0, 3).join(' / ')}</td>
-                  <td>{second.flavorNotes.slice(0, 3).join(' / ')}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div style={{ minWidth: 0 }}>
+            <div className="compare-table-wrap">
+              <table className="compare-table">
+                <thead>
+                  <tr>
+                    <th>对比维度</th>
+                    <th style={{ color: 'var(--brass-700)', fontWeight: 700 }}>
+                      ● {first.name.split('·')[0].trim()}
+                    </th>
+                    <th style={{ color: 'var(--sage-600)', fontWeight: 700 }}>
+                      ◆ {second.name.split('·')[0].trim()}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th>产区与处理</th>
+                    <td>{first.origin.split('·')[0]} · {first.process}</td>
+                    <td>{second.origin.split('·')[0]} · {second.process}</td>
+                  </tr>
+                  <tr>
+                    <th>烘焙与温度</th>
+                    <td>{first.roast} · {first.temperature}</td>
+                    <td>{second.roast} · {second.temperature}</td>
+                  </tr>
+                  <tr>
+                    <th>器具与水温</th>
+                    <td>{first.methodLabel} · {first.recipe.waterTempC}°C</td>
+                    <td>{second.methodLabel} · {second.recipe.waterTempC}°C</td>
+                  </tr>
+                  <tr>
+                    <th>标准粉水比</th>
+                    <td className="mono">{first.recipe.ratioLabel}</td>
+                    <td className="mono">{second.recipe.ratioLabel}</td>
+                  </tr>
+                  <tr>
+                    <th>研磨粗细</th>
+                    <td>刻度 {first.recipe.grindLevel}/10</td>
+                    <td>刻度 {second.recipe.grindLevel}/10</td>
+                  </tr>
+                  <tr>
+                    <th>核心风味调</th>
+                    <td>{first.flavorNotes.slice(0, 3).join(' / ')}</td>
+                    <td>{second.flavorNotes.slice(0, 3).join(' / ')}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
               <button

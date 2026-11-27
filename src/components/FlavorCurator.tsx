@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   COFFEE_EXHIBITS,
   CURATOR_SCENARIOS,
@@ -748,105 +749,107 @@ export function FlavorCurator({
       </section>
 
       {/* Playful Blind-Box Fortune Drawer Modal */}
-      {blindBoxOpen && (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-label="今日风味盲盒抽签"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setBlindBoxOpen(false)
-          }}
-        >
-          <div className="specimen-modal blindbox-modal">
-            <button
-              type="button"
-              className="modal-close"
-              aria-label="关闭抽签"
-              onClick={() => setBlindBoxOpen(false)}
-            >
-              ×
-            </button>
+      {blindBoxOpen &&
+        createPortal(
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-label="今日风味盲盒抽签"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setBlindBoxOpen(false)
+            }}
+          >
+            <div className="specimen-modal blindbox-modal">
+              <button
+                type="button"
+                className="modal-close"
+                aria-label="关闭抽签"
+                onClick={() => setBlindBoxOpen(false)}
+              >
+                ×
+              </button>
 
-            <p className="eyebrow">CURATOR BLIND BOX · 今日风味灵感签</p>
-            <h2 className="section-heading" style={{ fontSize: '1.45rem', marginBottom: 14 }}>
-              {isDrawing ? '正在为你摇动馆藏豆签…' : '为你抽中今日灵感馆藏'}
-            </h2>
+              <p className="eyebrow">CURATOR BLIND BOX · 今日风味灵感签</p>
+              <h2 className="section-heading" style={{ fontSize: '1.45rem', marginBottom: 14 }}>
+                {isDrawing ? '正在为你摇动馆藏豆签…' : '为你抽中今日灵感馆藏'}
+              </h2>
 
-            <div className={`blindbox-card ${isDrawing ? 'shuffling' : 'revealed'}`}>
-              <div className="blindbox-medallion">
-                <CupEmblem
-                  method={drawnCoffee.method}
-                  liquid={drawnCoffee.palette.liquid}
-                  crema={drawnCoffee.palette.crema}
-                />
-              </div>
-              <span className="tag tag-brass mono" style={{ marginBottom: 8 }}>
-                {drawnCoffee.exhibitNo} · {drawnCoffee.category} · {drawnCoffee.roast}
-              </span>
-              <h3 className="exhibit-title" style={{ fontSize: '1.35rem' }}>
-                {drawnCoffee.name}
-              </h3>
-              <p className="exhibit-en" style={{ marginBottom: 12 }}>
-                {drawnCoffee.englishName}
-              </p>
-
-              {!isDrawing && drawnExtra && (
-                <blockquote className="blindbox-fortune">
-                  “{drawnExtra.fortune}”
-                </blockquote>
-              )}
-
-              <div className="pill-row" style={{ justifyContent: 'center', marginBottom: 12 }}>
-                {drawnCoffee.flavorNotes.map((note) => (
-                  <span key={note} className="tag">
-                    {note}
-                  </span>
-                ))}
-              </div>
-
-              {!isDrawing && drawnExtra && (
-                <div style={{ fontSize: '0.8rem', color: 'var(--espresso-600)' }}>
-                  推荐搭档：{drawnExtra.pairing}
+              <div className={`blindbox-card ${isDrawing ? 'shuffling' : 'revealed'}`}>
+                <div className="blindbox-medallion">
+                  <CupEmblem
+                    method={drawnCoffee.method}
+                    liquid={drawnCoffee.palette.liquid}
+                    crema={drawnCoffee.palette.crema}
+                  />
                 </div>
-              )}
-            </div>
+                <span className="tag tag-brass mono" style={{ marginBottom: 8 }}>
+                  {drawnCoffee.exhibitNo} · {drawnCoffee.category} · {drawnCoffee.roast}
+                </span>
+                <h3 className="exhibit-title" style={{ fontSize: '1.35rem' }}>
+                  {drawnCoffee.name}
+                </h3>
+                <p className="exhibit-en" style={{ marginBottom: 12 }}>
+                  {drawnCoffee.englishName}
+                </p>
 
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 18 }}>
-              <button
-                type="button"
-                className="btn btn-outline"
-                disabled={isDrawing}
-                onClick={startBlindBoxDraw}
-              >
-                ↻ 再抽一签
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline"
-                disabled={isDrawing}
-                onClick={() => {
-                  setBlindBoxOpen(false)
-                  onSelectInspect(drawnCoffee)
-                }}
-              >
-                查看完整配方
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={isDrawing}
-                onClick={() => {
-                  setBlindBoxOpen(false)
-                  onStartBrew(drawnCoffee)
-                }}
-              >
-                立即冲煮这杯 →
-              </button>
+                {!isDrawing && drawnExtra && (
+                  <blockquote className="blindbox-fortune">
+                    “{drawnExtra.fortune}”
+                  </blockquote>
+                )}
+
+                <div className="pill-row" style={{ justifyContent: 'center', marginBottom: 12 }}>
+                  {drawnCoffee.flavorNotes.map((note) => (
+                    <span key={note} className="tag">
+                      {note}
+                    </span>
+                  ))}
+                </div>
+
+                {!isDrawing && drawnExtra && (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--espresso-600)' }}>
+                    推荐搭档：{drawnExtra.pairing}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 18 }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  disabled={isDrawing}
+                  onClick={startBlindBoxDraw}
+                >
+                  ↻ 再抽一签
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  disabled={isDrawing}
+                  onClick={() => {
+                    setBlindBoxOpen(false)
+                    onSelectInspect(drawnCoffee)
+                  }}
+                >
+                  查看完整配方
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={isDrawing}
+                  onClick={() => {
+                    setBlindBoxOpen(false)
+                    onStartBrew(drawnCoffee)
+                  }}
+                >
+                  立即冲煮这杯 →
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }

@@ -184,23 +184,41 @@ export function BrewStudio({
     return () => window.clearInterval(timer)
   }, [autoAdvance, coffee.steps, isComplete, isRunning, onBrewComplete, soundMuted, stepIndex])
 
-  // Keep mobile/tablet screen awake during active countdown
+  // Keep mobile/tablet screen awake during active countdown (and re-acquire on tab return)
   useEffect(() => {
     if (!isRunning || isComplete) return
+    let cancelled = false
     let sentinel: { release: () => Promise<void> } | null = null
     const nav = navigator as Navigator & {
       wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> }
     }
-    nav.wakeLock
-      ?.request('screen')
-      .then((lock) => {
-        sentinel = lock
-      })
-      .catch(() => {
-        // Ignore if unsupported by browser
-      })
+
+    const requestLock = () => {
+      nav.wakeLock
+        ?.request('screen')
+        .then((lock) => {
+          if (cancelled) {
+            lock.release().catch(() => {})
+          } else {
+            sentinel = lock
+          }
+        })
+        .catch(() => {
+          // Ignore if unsupported by browser
+        })
+    }
+
+    requestLock()
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        requestLock()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVisibility)
       sentinel?.release().catch(() => {})
     }
   }, [isComplete, isRunning])
@@ -443,28 +461,22 @@ export function BrewStudio({
     <div className="view-enter">
       {/* Studio Top Bar */}
       <div className="studio-topbar">
-        <div>
+        <div className="studio-topbar-heading">
           <p className="eyebrow" style={{ marginBottom: 4 }}>
             INTERACTIVE BREWING STUDIO · 沉浸式冲煮工坊
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <h1 className="section-heading" style={{ margin: 0, fontSize: '1.65rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', maxWidth: '100%' }}>
+            <h1 className="section-heading studio-coffee-title" style={{ margin: 0 }}>
               {coffee.name}
             </h1>
             <select
               id="studio-coffee-select"
+              className="studio-coffee-select"
               aria-label="切换冲煮咖啡"
               value={coffee.id}
               onChange={(e) => {
                 const found = COFFEE_EXHIBITS.find((c) => c.id === e.target.value)
                 if (found) onChangeCoffee(found)
-              }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 999,
-                border: '1px solid var(--border-strong)',
-                background: 'var(--paper-surface)',
-                fontSize: '0.84rem',
               }}
             >
               {COFFEE_EXHIBITS.map((c) => (
@@ -476,7 +488,7 @@ export function BrewStudio({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div className="studio-topbar-actions">
           <div className="serving-switcher" role="group" aria-label="调整杯数">
             {[1, 1.5, 2].map((s) => (
               <button
@@ -513,7 +525,7 @@ export function BrewStudio({
           <button
             id="studio-mute-btn"
             type="button"
-            className={`icon-pill-btn ${soundMuted ? '' : 'active'}`}
+            className={`icon-pill-btn studio-mute-btn ${soundMuted ? '' : 'active'}`}
             onClick={onToggleSoundMuted}
             title={soundMuted ? '开启全馆交互与计时提示音' : '静音全馆交互与计时提示音'}
           >

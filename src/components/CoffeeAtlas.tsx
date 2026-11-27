@@ -441,7 +441,7 @@ export function CoffeeAtlas({
                 本馆收录产区展品（{originExhibits.length} 款）
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {originExhibits.slice(0, 4).map((c) => (
+                {originExhibits.slice(0, 6).map((c) => (
                   <div key={c.id} className="atlas-mini-exhibit">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                       <CupEmblem

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { COFFEE_EXHIBITS } from '../data/coffees'
 import type { AppView, AtlasSection, CoffeeExhibit } from '../types/coffee'
 import { playGentleChime } from '../utils/platform'
@@ -103,7 +104,7 @@ export function QuickFinder({
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
       className="modal-backdrop quick-finder-backdrop"
       role="dialog"
@@ -121,7 +122,7 @@ export function QuickFinder({
             id="quick-finder-input"
             type="search"
             className="quick-finder-input"
-            placeholder="搜索 32 款咖啡展品、产区、风味词、器具或馆内工具（如 艺伎 / 虹吸 / 诊断）…"
+            placeholder="搜索 40 款咖啡展品、产区、风味词或工具（如 云南百花蜜 / 花魁 / 虹吸 / 诊断）…"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
@@ -250,6 +251,7 @@ export function QuickFinder({
           <span>⌘K / Ctrl+K 随时唤出</span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

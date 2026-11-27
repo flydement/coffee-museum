@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { FlavorCurator } from './components/FlavorCurator'
 import { Header } from './components/Header'
@@ -94,6 +94,8 @@ function resolveInitialRoute() {
 
 export default function App() {
   const [initialRoute] = useState(() => resolveInitialRoute())
+  const isPoppingHistoryRef = useRef(false)
+  const hasSyncedInitialHashRef = useRef(false)
 
   const [activeView, setActiveView] = useState<AppView>(initialRoute.view)
   const [atlasSection, setAtlasSection] = useState<AtlasSection>(
@@ -102,6 +104,7 @@ export default function App() {
   const [studioMounted, setStudioMounted] = useState<boolean>(
     initialRoute.view === 'studio'
   )
+  const [brewSessionId, setBrewSessionId] = useState<number>(0)
   const [quickFinderOpen, setQuickFinderOpen] = useState(false)
 
   const [theme, setTheme] = useState<MuseumTheme>(() => loadTheme())
@@ -183,7 +186,7 @@ export default function App() {
     }
   }, [])
 
-  // Sync active museum route to browser hash for deep-linking & refresh persistence
+  // Sync active museum route to browser history for deep-linking & native Android/browser Back gesture
   useEffect(() => {
     const nextHash = buildMuseumHash({
       view: activeView,
@@ -191,14 +194,26 @@ export default function App() {
       brewCoffeeId: activeView === 'studio' ? activeBrewCoffee.id : undefined,
       atlasSection: activeView === 'atlas' ? atlasSection : undefined,
     })
+    if (!hasSyncedInitialHashRef.current) {
+      hasSyncedInitialHashRef.current = true
+      if (window.location.hash !== nextHash) {
+        window.history.replaceState(null, '', nextHash)
+      }
+      return
+    }
+    if (isPoppingHistoryRef.current) {
+      isPoppingHistoryRef.current = false
+      return
+    }
     if (window.location.hash !== nextHash) {
-      window.history.replaceState(null, '', nextHash)
+      window.history.pushState(null, '', nextHash)
     }
   }, [activeBrewCoffee.id, activeView, atlasSection, inspectedCoffee?.id])
 
-  // Support browser Back/Forward & external hash changes
+  // Support browser Back/Forward, Android swipe-back, and external hash changes
   useEffect(() => {
-    const onHashChange = () => {
+    const syncFromLocationHash = () => {
+      isPoppingHistoryRef.current = true
       const parsed = parseMuseumHash(window.location.hash, COFFEE_EXHIBITS)
       setActiveView(parsed.view)
       if (parsed.view === 'studio') {
@@ -216,13 +231,19 @@ export default function App() {
           ? COFFEE_EXHIBITS.find((c) => c.id === parsed.exhibitId) ?? null
           : null
         setInspectedCoffee(match)
+      } else {
+        setInspectedCoffee(null)
       }
       if (parsed.view === 'atlas' && parsed.atlasSection) {
         setAtlasSection(parsed.atlasSection)
       }
     }
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
+    window.addEventListener('hashchange', syncFromLocationHash)
+    window.addEventListener('popstate', syncFromLocationHash)
+    return () => {
+      window.removeEventListener('hashchange', syncFromLocationHash)
+      window.removeEventListener('popstate', syncFromLocationHash)
+    }
   }, [])
 
   // Global Quick Finder shortcut: Cmd+K / Ctrl+K
@@ -284,6 +305,7 @@ export default function App() {
       setActiveTastePreset(tastePreset)
       setHasActiveBrew(true)
       setStudioMounted(true)
+      setBrewSessionId((id) => id + 1)
       handleNavigate('studio')
     },
     [handleNavigate]
@@ -417,7 +439,7 @@ export default function App() {
             {studioMounted && (
               <div hidden={activeView !== 'studio'}>
                 <BrewStudio
-                  key={activeBrewCoffee.id}
+                  key={`${activeBrewCoffee.id}-${brewSessionId}`}
                   coffee={activeBrewCoffee}
                   isActive={activeView === 'studio'}
                   servings={activeServings}

@@ -624,6 +624,8 @@ export function BrewAnimation({
     const isDirty = coffee.method === 'dirty'
     const isLemon = coffee.method === 'iced'
     const isOrange = coffee.id === 'orange-c-cold-americano'
+    const isMuscatGrape = coffee.id === 'muscat-grape-coldbrew'
+    const isTonic = coffee.id === 'espresso-tonic-citrus'
     const isFrappe = coffee.id === 'greek-iced-frappe'
     const isMatchaFusion = coffee.id === 'uji-matcha-espresso-fusion'
     const isCreamTop = coffee.id === 'viennese-einspanner' || coffee.id === 'irish-velvet-coffee'
@@ -699,11 +701,15 @@ export function BrewAnimation({
                     ? liquid
                     : isDirty
                       ? crema
-                      : isOrange
-                        ? '#F4A642'
-                        : isLemon
-                          ? '#F2D985'
-                          : liquid
+                      : isMuscatGrape
+                        ? '#A8D584'
+                        : isTonic
+                          ? '#DFEEF0'
+                          : isOrange
+                            ? '#F4A642'
+                            : isLemon
+                              ? '#F2D985'
+                              : liquid
                 }
                 style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
               />
@@ -742,6 +748,24 @@ export function BrewAnimation({
                 )
               )}
 
+              {isMuscatGrape && (
+                <g opacity="0.9">
+                  <circle cx="136" cy="222" r="11" fill="#77B255" stroke="#CBE9A8" strokeWidth="1.5" />
+                  <circle cx="160" cy="226" r="12" fill="#89C463" stroke="#CBE9A8" strokeWidth="1.5" />
+                  <circle cx="182" cy="221" r="10.5" fill="#72AC4E" stroke="#CBE9A8" strokeWidth="1.5" />
+                </g>
+              )}
+
+              {(isMuscatGrape || isTonic) && fillPercent > 45 && (
+                <g fill="#FFFFFF" opacity="0.7">
+                  <circle cx="132" cy="186" r="2.6" />
+                  <circle cx="174" cy="198" r="2.2" />
+                  <circle cx="152" cy="166" r="2.4" />
+                  <circle cx="184" cy="152" r="1.9" />
+                  <circle cx="144" cy="204" r="2" />
+                </g>
+              )}
+
               {step.hasIce && (
                 <g opacity="0.72">
                   <rect x="128" y="138" width="26" height="26" rx="5" transform="rotate(-10 141 151)" fill="#FFFFFF" stroke="#B6CAD2" strokeWidth="1.5" />
@@ -750,18 +774,18 @@ export function BrewAnimation({
                 </g>
               )}
 
-              {isLemon && !isFrappe && (
+              {isLemon && !isFrappe && !isMuscatGrape && (
                 <g transform="translate(186, 118) rotate(20)">
                   <circle
                     cx="0"
                     cy="0"
                     r="18"
-                    fill={isOrange ? '#E87B22' : '#E8BE3C'}
-                    stroke={isOrange ? '#FFE2B8' : '#FFF4C2'}
+                    fill={isTonic ? '#E66F5D' : isOrange ? '#E87B22' : '#E8BE3C'}
+                    stroke={isTonic ? '#FFD6CC' : isOrange ? '#FFE2B8' : '#FFF4C2'}
                     strokeWidth="3"
                   />
-                  <line x1="-14" y1="0" x2="14" y2="0" stroke={isOrange ? '#FFE2B8' : '#FFF4C2'} strokeWidth="1.5" />
-                  <line x1="0" y1="-14" x2="0" y2="14" stroke={isOrange ? '#FFE2B8' : '#FFF4C2'} strokeWidth="1.5" />
+                  <line x1="-14" y1="0" x2="14" y2="0" stroke={isTonic ? '#FFD6CC' : isOrange ? '#FFE2B8' : '#FFF4C2'} strokeWidth="1.5" />
+                  <line x1="0" y1="-14" x2="0" y2="14" stroke={isTonic ? '#FFD6CC' : isOrange ? '#FFE2B8' : '#FFF4C2'} strokeWidth="1.5" />
                 </g>
               )}
 
