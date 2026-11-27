@@ -29,8 +29,8 @@ import { buildMuseumHash, parseMuseumHash } from '../src/utils/router.ts'
 import { searchMuseumCatalog } from '../src/utils/search.ts'
 
 describe('Coffee Museum Catalog & Data Integrity', () => {
-  it('has 40 unique exhibits (10 per category) with valid steps, moods, and editorial extras', () => {
-    assert.equal(COFFEE_EXHIBITS.length, 40)
+  it('has 52 unique exhibits (13 per category) with valid steps, moods, and editorial extras', () => {
+    assert.equal(COFFEE_EXHIBITS.length, 52)
     const ids = new Set<string>()
     const nos = new Set<string>()
     const categoryCounts = new Map<string, number>()
@@ -72,13 +72,13 @@ describe('Coffee Museum Catalog & Data Integrity', () => {
       }
     }
 
-    assert.equal(categoryCounts.get('手冲黑咖'), 10)
-    assert.equal(categoryCounts.get('意式奶咖'), 10)
-    assert.equal(categoryCounts.get('冰爽特调'), 10)
-    assert.equal(categoryCounts.get('复古器具'), 10)
+    assert.equal(categoryCounts.get('手冲黑咖'), 13)
+    assert.equal(categoryCounts.get('意式奶咖'), 13)
+    assert.equal(categoryCounts.get('冰爽特调'), 13)
+    assert.equal(categoryCounts.get('复古器具'), 13)
   })
 
-  it('covers 14 distinct brew methods, Yunnan Puer Wildflower Honey, and monsoon-malabar pour-2', () => {
+  it('covers 14 distinct brew methods, Yunnan Wildflower Honey, v5.6 exhibits, and monsoon-malabar pour-2', () => {
     const methods = new Set(COFFEE_EXHIBITS.map((c) => c.method))
     assert.equal(methods.size, 14)
 
@@ -88,14 +88,36 @@ describe('Coffee Museum Catalog & Data Integrity', () => {
     assert.equal(yunnanHoney.category, '手冲黑咖')
     assert.ok(yunnanHoney.process.includes('蜜处理'))
 
+    const newExhibitIds = [
+      'costa-rica-mozart-v60',
+      'colombia-el-paraiso-lychee',
+      'hawaii-kona-chemex',
+      'yunnan-brown-sugar-cinnamon-latte',
+      'pistachio-velvet-latte',
+      'melbourne-magic-coffee',
+      'bumble-honey-orange-coffee',
+      'eisbock-thick-milk-dirty',
+      'peach-oolong-shaken-coffee',
+      'saigon-ca-phe-sua-da',
+      'brazil-yellow-bourbon-moka',
+      'tanzania-peaberry-clever',
+    ]
+    for (const id of newExhibitIds) {
+      assert.ok(
+        COFFEE_EXHIBITS.some((c) => c.id === id),
+        `Missing expected v5.6 exhibit ${id}`
+      )
+    }
+
     const monsoon = COFFEE_EXHIBITS.find((c) => c.id === 'monsoon-malabar-flannel')
     assert.ok(monsoon)
     const pour2 = monsoon.steps.find((s) => s.id === 'pour-2')
     assert.equal(pour2?.isPouring, true)
   })
 
-  it('matches >= 1 exhibit for every Atlas origin, flavor wheel family, roast stage, and process guide', () => {
+  it('matches >= 1 exhibit for every Atlas origin (16), flavor wheel family, roast stage, and process guide', () => {
     const idSet = new Set(COFFEE_EXHIBITS.map((c) => c.id))
+    assert.equal(COFFEE_ORIGINS.length, 16)
 
     for (const origin of COFFEE_ORIGINS) {
       const matched = COFFEE_EXHIBITS.filter((c) =>
@@ -303,6 +325,31 @@ describe('Hash Routing, Quick Search & Archive Sanitization', () => {
 
     const byLightMedHoney = searchMuseumCatalog('浅中烘 蜜处理', COFFEE_EXHIBITS)
     assert.ok(byLightMedHoney.exhibits.some((c) => c.id === 'yunnan-puer-wildflower-honey'))
+
+    assert.equal(
+      searchMuseumCatalog('莫扎特', COFFEE_EXHIBITS).exhibits[0]?.id,
+      'costa-rica-mozart-v60'
+    )
+    assert.equal(
+      searchMuseumCatalog('大黄蜂', COFFEE_EXHIBITS).exhibits[0]?.id,
+      'bumble-honey-orange-coffee'
+    )
+    assert.equal(
+      searchMuseumCatalog('冰博克', COFFEE_EXHIBITS).exhibits[0]?.id,
+      'eisbock-thick-milk-dirty'
+    )
+    assert.equal(
+      searchMuseumCatalog('夏威夷 可纳', COFFEE_EXHIBITS).exhibits[0]?.id,
+      'hawaii-kona-chemex'
+    )
+    assert.equal(
+      searchMuseumCatalog('西贡 炼乳', COFFEE_EXHIBITS).exhibits[0]?.id,
+      'saigon-ca-phe-sua-da'
+    )
+    assert.equal(
+      searchMuseumCatalog('墨尔本 magic', COFFEE_EXHIBITS).exhibits[0]?.id,
+      'melbourne-magic-coffee'
+    )
 
     const byTool = searchMuseumCatalog('风味轮', COFFEE_EXHIBITS)
     assert.ok(byTool.shortcuts.some((s) => s.atlasSection === 'wheel'))

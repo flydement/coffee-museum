@@ -353,6 +353,7 @@ export function CoffeeAtlas({
                         }
                       }}
                     >
+                      <circle r="16" fill="transparent" />
                       {active && (
                         <circle
                           r="18"

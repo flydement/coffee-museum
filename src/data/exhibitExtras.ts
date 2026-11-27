@@ -205,6 +205,66 @@ export const EXHIBIT_EXTRAS: Record<string, ExhibitEditorialExtra> = {
     tastingWindow: '压毕略晃散去燥热，55°C 时草莓奶油与桂花蜜甜如同果汁',
     fortune: '只需 100 秒专注发力，就能压出高光时刻——今日好运如花绽放！',
   },
+  'costa-rica-mozart-v60': {
+    pairing: '玫瑰荔枝慕斯 / 葡萄干司康',
+    tastingWindow: '从 62°C 玫瑰清香品到 48°C，葡萄干蜜甜层层绽放',
+    fortune: '生活自带优美旋律，放慢节奏便能听见今日的动人乐章。',
+  },
+  'colombia-el-paraiso-lychee': {
+    pairing: '白桃乳酸冻芝士 / 荔枝杨梅冰糕',
+    tastingWindow: '略凉至 55°C 轻啜，鲜剥冰荔枝与白玉兰花露香气达到巅峰',
+    fortune: '敢于跳出常规去尝试，生活自会回馈你一场意料之外的惊艳。',
+  },
+  'hawaii-kona-chemex': {
+    pairing: '夏威夷果仁曲奇 / 枫糖黄油华夫饼',
+    tastingWindow: '趁温热 64°C 细品太平洋岛豆零涩感的烤坚果与黑糖丝绒',
+    fortune: '像午后的岛屿海风一样松弛从容，今天一切都会顺滑推进。',
+  },
+  'yunnan-brown-sugar-cinnamon-latte': {
+    pairing: '红糖核桃软欧 / 肉桂苹果酥',
+    tastingWindow: '60°C 趁热连同肉桂云顶奶泡一口抿下，古法黑糖暖意直抵心底',
+    fortune: '温柔的烟火气最抚人心，今天记得好好善待自己。',
+  },
+  'pistachio-velvet-latte': {
+    pairing: '西西里卡诺里甜卷 / 开心果费南雪',
+    tastingWindow: '出杯 58°C 即饮，香脆开心果碎配温热坚果奶泡双倍治愈',
+    fortune: '剥开坚硬的外壳，里面藏着满满翡翠般的丰盈收获。',
+  },
+  'melbourne-magic-coffee': {
+    pairing: '焦糖海盐可颂 / 榛果巧克力塔',
+    tastingWindow: '56°C 小口细品，双份精萃的浓缩甜感在三四口间一气呵成',
+    fortune: '删繁就简、直取精华，今日的你会用最利落的方式施展魔法。',
+  },
+  'bumble-honey-orange-coffee': {
+    pairing: '蜂蜜海绵蛋糕 / 糖渍橙片黑巧',
+    tastingWindow: '先定格三层蜂纹渐变，拌匀焦糖蜂蜜与橙汁后趁冰爽畅饮',
+    fortune: '明亮的色彩总能点亮情绪，愿今日满载维 C 般的明快活力！',
+  },
+  'eisbock-thick-milk-dirty': {
+    pairing: '原味提拉米苏 / 手指海绵饼干',
+    tastingWindow: '黄金 60 秒内严禁搅拌，三大口感受从炙热浓咖到冰甜厚乳的渐变',
+    fortune: '浓缩沉淀后的厚重质感，总能带来无可替代的高光时刻。',
+  },
+  'peach-oolong-shaken-coffee': {
+    pairing: '白桃大福 / 茉莉轻乳酪蛋糕',
+    tastingWindow: '贴杯直饮不要插吸管，同时品尝绵密雪沫与清甜白桃乌龙',
+    fortune: '轻盈自在也能香气四溢，今天适合带着微风去迎接新灵感。',
+  },
+  'saigon-ca-phe-sua-da': {
+    pairing: '越式焦糖布丁 / 椰丝酥脆法棍',
+    tastingWindow: '拌匀炼乳倾入满杯冰块，听着冰块清脆碰撞声大口提神畅饮',
+    fortune: '慢滴三分钟换来一整天的满格能量，耐心终会酿出浓甜！',
+  },
+  'brazil-yellow-bourbon-moka': {
+    pairing: '枫糖核桃派 / 牛奶巧克力玛芬',
+    tastingWindow: '离火冷却后趁热 68°C 纯饮，或兑等量热鲜奶化身复古焦糖欧蕾',
+    fortune: '金黄硕果源于脚踏实地的日晒雨露，今日稳扎稳打必有回甘。',
+  },
+  'tanzania-peaberry-clever': {
+    pairing: '黑加仑果酱司康 / 橙香玛德琳',
+    tastingWindow: '放流完毕略温至 58°C，雪山 PB 圆豆的黑醋栗与柑橘蜜感最饱满',
+    fortune: '把全部养分凝聚于一处，独一无二的你自会闪耀出众光芒。',
+  },
 }
 
 export function getDailyFeaturedIndex(total: number): number {

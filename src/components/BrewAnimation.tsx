@@ -623,10 +623,13 @@ export function BrewAnimation({
     const topY = 232 - totalH
     const isDirty = coffee.method === 'dirty'
     const isLemon = coffee.method === 'iced'
-    const isOrange = coffee.id === 'orange-c-cold-americano'
+    const isBumble = coffee.id === 'bumble-honey-orange-coffee'
+    const isOrange = coffee.id === 'orange-c-cold-americano' || isBumble
     const isMuscatGrape = coffee.id === 'muscat-grape-coldbrew'
     const isTonic = coffee.id === 'espresso-tonic-citrus'
     const isFrappe = coffee.id === 'greek-iced-frappe'
+    const isPeachOolong = coffee.id === 'peach-oolong-shaken-coffee'
+    const isEisbockDirty = coffee.id === 'eisbock-thick-milk-dirty'
     const isMatchaFusion = coffee.id === 'uji-matcha-espresso-fusion'
     const isCreamTop = coffee.id === 'viennese-einspanner' || coffee.id === 'irish-velvet-coffee'
     const isAffogato = coffee.id === 'florence-affogato'
@@ -697,7 +700,7 @@ export function BrewAnimation({
                 width="116"
                 height={totalH + 14}
                 fill={
-                  isCreamTop || isFrappe
+                  isCreamTop || isFrappe || isPeachOolong
                     ? liquid
                     : isDirty
                       ? crema
@@ -713,6 +716,11 @@ export function BrewAnimation({
                 }
                 style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
               />
+
+              {/* Bumble amber wildflower honey syrup bottom stripe */}
+              {isBumble && fillPercent > 10 && (
+                <rect x="102" y="208" width="116" height="36" fill="#B8621B" opacity="0.92" />
+              )}
 
               {/* Layered cascade */}
               {isMatchaFusion ? (
@@ -730,9 +738,9 @@ export function BrewAnimation({
                     />
                   )}
                 </>
-              ) : (isCreamTop || isFrappe) && fillPercent > 50 ? (
+              ) : (isCreamTop || isFrappe || isPeachOolong) && fillPercent > 50 ? (
                 <path
-                  d={`M102 ${topY} H218 V${topY + (isFrappe ? 48 : 38)} Q188 ${topY + (isFrappe ? 56 : 46)} 160 ${topY + (isFrappe ? 50 : 40)} T102 ${topY + (isFrappe ? 52 : 42)} Z`}
+                  d={`M102 ${topY} H218 V${topY + (isFrappe ? 48 : isPeachOolong ? 34 : 38)} Q188 ${topY + (isFrappe ? 56 : isPeachOolong ? 42 : 46)} 160 ${topY + (isFrappe ? 50 : isPeachOolong ? 36 : 40)} T102 ${topY + (isFrappe ? 52 : isPeachOolong ? 38 : 42)} Z`}
                   fill={crema}
                   style={{ transition: 'all 0.5s ease' }}
                 />
@@ -774,7 +782,7 @@ export function BrewAnimation({
                 </g>
               )}
 
-              {isLemon && !isFrappe && !isMuscatGrape && (
+              {isLemon && !isFrappe && !isMuscatGrape && !isPeachOolong && (
                 <g transform="translate(186, 118) rotate(20)">
                   <circle
                     cx="0"
@@ -789,7 +797,7 @@ export function BrewAnimation({
                 </g>
               )}
 
-              {isDirty && !isMatchaFusion && fillPercent >= 90 && (
+              {isDirty && !isMatchaFusion && !isEisbockDirty && fillPercent >= 90 && (
                 <g fill={isCreamTop ? '#7D4E32' : '#E6B24C'}>
                   <circle cx="144" cy={topY + 8} r="2.8" />
                   <circle cx="158" cy={topY + 6} r="3.2" />
@@ -1006,26 +1014,50 @@ export function BrewAnimation({
     )
   }
 
-  // 9. Vietnamese Phin Metal Drip Filter & Golden Whipped Egg-Cream Glass
+  // 9. Vietnamese Phin Metal Drip Filter (Hanoi Egg Coffee & Saigon Iced Condensed Milk)
   if (coffee.method === 'phin') {
+    const isIcedSuaDa = coffee.id === 'saigon-ca-phe-sua-da'
     const isFinished = step.phase === 'finish'
     const isWhipping = step.phase === 'milk'
     const showPhinOnCup = !isFinished && !isWhipping
-    const coffeeH = Math.round((Math.min(fillPercent, 65) / 100) * 102)
+    const coffeeH = isIcedSuaDa
+      ? isFinished
+        ? 84
+        : step.phase === 'prep'
+          ? 0
+          : Math.round((Math.min(fillPercent, 74) / 100) * 96)
+      : Math.round((Math.min(fillPercent, 65) / 100) * 102)
     const coffeeY = 232 - coffeeH
-    const showEggFoam = isFinished || isWhipping
+    const showEggFoam = !isIcedSuaDa && (isFinished || isWhipping)
 
     return (
-      <svg viewBox="0 0 320 270" width="100%" style={{ maxWidth: 340 }} aria-label="越南滴漏壶与河内蛋咖啡实时演示">
+      <svg
+        viewBox="0 0 320 270"
+        width="100%"
+        style={{ maxWidth: 340 }}
+        aria-label={
+          isIcedSuaDa
+            ? '越南滴漏壶与西贡冰炼乳咖啡实时演示'
+            : '越南滴漏壶与河内蛋咖啡实时演示'
+        }
+      >
         <defs>
           <clipPath id="phin-cup-clip">
             <path d="M112 138 H208 L198 228 C197 234 191 238 184 238 H136 C129 238 123 234 122 228 Z" />
           </clipPath>
         </defs>
 
-        {/* Warm Water Bath Saucer (Hanoi Classic) */}
-        <ellipse cx="160" cy="242" rx="76" ry="10" fill="#EFE7D8" stroke="#B88446" strokeWidth="2" />
-        <ellipse cx="160" cy="240" rx="58" ry="6" fill="#D6E6EE" opacity="0.6" />
+        {/* Saucer / Coaster */}
+        <ellipse
+          cx="160"
+          cy="242"
+          rx="76"
+          ry="10"
+          fill={isIcedSuaDa ? '#D5BE9A' : '#EFE7D8'}
+          stroke={isIcedSuaDa ? '#7A5B47' : '#B88446'}
+          strokeWidth="2"
+        />
+        {!isIcedSuaDa && <ellipse cx="160" cy="240" rx="58" ry="6" fill="#D6E6EE" opacity="0.6" />}
 
         {/* Lower Heatproof Glass Cup */}
         <path
@@ -1036,15 +1068,66 @@ export function BrewAnimation({
         />
 
         <g clipPath="url(#phin-cup-clip)">
-          {/* Rich Vietnamese Dark Drip Coffee */}
-          <rect
-            x="108"
-            y={coffeeY}
-            width="104"
-            height={coffeeH + 12}
-            fill={liquid}
-            style={{ transition: 'y 0.4s linear, height 0.4s linear' }}
-          />
+          {/* Rich Vietnamese Dark Drip Coffee (or caramel mixed iced coffee on finish) */}
+          {coffeeH > 0 && (
+            <rect
+              x="108"
+              y={coffeeY}
+              width="104"
+              height={coffeeH + 12}
+              fill={isIcedSuaDa && isFinished ? '#7C4B2A' : liquid}
+              style={{ transition: 'y 0.4s linear, height 0.4s linear, fill 0.4s ease' }}
+            />
+          )}
+          {/* Thick Sweetened Condensed Milk Base for Saigon Cà Phê Sữa Đá */}
+          {isIcedSuaDa && !isFinished && (
+            <>
+              <rect x="108" y="210" width="104" height="32" fill="#F5E5C8" />
+              <path
+                d="M108 210 Q134 205 160 210 T212 209 V216 H108 Z"
+                fill="#FAF0DC"
+                opacity="0.92"
+              />
+            </>
+          )}
+          {/* Translucent Ice Cubes for Saigon Iced Coffee Finish */}
+          {isIcedSuaDa && step.hasIce && (
+            <g opacity="0.78">
+              <rect
+                x="126"
+                y="156"
+                width="24"
+                height="24"
+                rx="4"
+                transform="rotate(-12 138 168)"
+                fill="#FFFFFF"
+                stroke="#B6CAD2"
+                strokeWidth="1.5"
+              />
+              <rect
+                x="162"
+                y="166"
+                width="25"
+                height="25"
+                rx="4"
+                transform="rotate(14 174 178)"
+                fill="#FFFFFF"
+                stroke="#B6CAD2"
+                strokeWidth="1.5"
+              />
+              <rect
+                x="138"
+                y="192"
+                width="22"
+                height="22"
+                rx="4"
+                transform="rotate(8 149 203)"
+                fill="#FFFFFF"
+                stroke="#B6CAD2"
+                strokeWidth="1.5"
+              />
+            </g>
+          )}
           {/* Lush Golden Whipped Egg-Yolk Cream Topping */}
           {showEggFoam && (
             <path
@@ -1053,8 +1136,8 @@ export function BrewAnimation({
               style={{ transition: 'all 0.5s ease' }}
             />
           )}
-          {/* Cocoa dust garnish on finish */}
-          {isFinished && (
+          {/* Cocoa dust garnish on finish (Hanoi Egg Coffee only) */}
+          {!isIcedSuaDa && isFinished && (
             <g fill="#5C3118" opacity="0.72">
               <circle cx="142" cy={coffeeY - 28} r="2.2" />
               <circle cx="156" cy={coffeeY - 32} r="2.5" />

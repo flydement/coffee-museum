@@ -2,7 +2,7 @@ export interface OriginRegion {
   id: string
   name: string
   englishName: string
-  continent: '非洲' | '亚洲' | '中美洲与加勒比' | '南美洲' | '欧洲与地中海'
+  continent: '非洲' | '亚洲' | '中美洲与加勒比' | '南美洲' | '欧洲与地中海' | '太平洋与大洋洲'
   x: number // SVG map x (0..900)
   y: number // SVG map y (0..420)
   altitude: string
@@ -86,18 +86,18 @@ export const COFFEE_ORIGINS: OriginRegion[] = [
   },
   {
     id: 'kenya',
-    name: '肯尼亚 · 涅里高地',
-    englishName: 'Kenya · Nyeri',
+    name: '东非高地 · 肯尼亚与坦桑尼亚',
+    englishName: 'Kenya Nyeri & Tanzania Kilimanjaro',
     continent: '非洲',
     x: 522,
     y: 229,
-    altitude: '1,700 – 2,050 m',
-    climate: '赤道火山红土高地',
-    varieties: 'SL28 / SL34',
-    signatureFlavor: '黑加仑 · 圣女果 · 红西柚 · 果汁感',
+    altitude: '1,650 – 2,050 m',
+    climate: '赤道火山红土与乞力马扎罗雪山斜坡',
+    varieties: 'SL28 / SL34 / 乞力马扎罗 PB 圆豆',
+    signatureFlavor: '黑加仑 · 黑醋栗 · 圣女果 · 红西柚汁感',
     story:
-      '肯尼亚独有的 72 小时双重水洗发酵工艺搭配富含磷酸盐的火山红土，赋予 SL28 品种炸裂般的黑莓与红酒酸质。',
-    matchKeywords: ['肯尼亚'],
+      '肯尼亚独有的 72 小时双重水洗发酵工艺搭配火山红土赋予 SL28 炸裂浆果酸质；南邻乞力马扎罗雪山仅占 5% 的珍稀 PB 圆豆则以凝练饱满的黑醋栗甜感著称。',
+    matchKeywords: ['肯尼亚', '坦桑尼亚'],
   },
   {
     id: 'rwanda',
@@ -146,17 +146,17 @@ export const COFFEE_ORIGINS: OriginRegion[] = [
   },
   {
     id: 'vietnam',
-    name: '越南 · 大叻与河内咖啡馆',
-    englishName: 'Vietnam · Da Lat & Hanoi',
+    name: '越南 · 大叻、河内与西贡',
+    englishName: 'Vietnam · Da Lat, Hanoi & Saigon',
     continent: '亚洲',
     x: 702,
     y: 190,
-    altitude: '1,400 – 1,650 m',
-    climate: '中南部清凉高原与河内法式文化交融',
-    varieties: '大叻阿拉比卡 × 精品罗布斯塔拼配',
+    altitude: '800 – 1,650 m',
+    climate: '中部火山高原与南北法式咖啡文化交融',
+    varieties: '大叻阿拉比卡 × 邦美蜀精品罗布斯塔拼配',
     signatureFlavor: '焦糖炼乳 · 提拉米苏蛋奶霜 · 深烘可可',
     story:
-      '全球第二大咖啡产国。从街头慢滴的金属 Phin 滴漏壶，到 1946 年诞生的河内蛋咖啡，形成了独树一帜的浓甜慢生活美学。',
+      '全球第二大咖啡产国。北有 1946 年诞生的丝滑河内焦糖蛋咖啡，南有街头金属 Phin 壶慢滴加冰的西贡冰炼乳滴漏，共同构成独树一帜的南洋浓甜美学。',
     matchKeywords: ['越南'],
   },
   {
@@ -190,6 +190,21 @@ export const COFFEE_ORIGINS: OriginRegion[] = [
     matchKeywords: ['苏门答腊', '印度尼西亚'],
   },
   {
+    id: 'hawaii',
+    name: '夏威夷 · 可纳火山岛',
+    englishName: 'USA · Hawaii Kona Coast',
+    continent: '太平洋与大洋洲',
+    x: 92,
+    y: 174,
+    altitude: '450 – 850 m',
+    climate: '晨光晴朗、午后云雾遮荫的海岛火山斜坡',
+    varieties: '可纳铁皮卡 (Kona Typica)',
+    signatureFlavor: '烤夏威夷果 · 牛奶巧克力 · 红糖丝滑甜',
+    story:
+      '太平洋火山岛得天独厚的富矿熔岩土壤与“上午日照、下午云雾”的微气候，让可纳铁皮卡无需极高海拔也能绽放奶油坚果般的极度顺滑甘甜。',
+    matchKeywords: ['夏威夷', '可纳'],
+  },
+  {
     id: 'panama',
     name: '巴拿马 · 波奎特火山谷',
     englishName: 'Panama · Boquete',
@@ -213,26 +228,26 @@ export const COFFEE_ORIGINS: OriginRegion[] = [
     y: 196,
     altitude: '1,550 – 1,850 m',
     climate: '太平洋干湿季分明火山带',
-    varieties: '卡杜拉 / 卡杜艾',
-    signatureFlavor: '红糖果脯 · 葡萄干 · 烤杏仁脂香',
+    varieties: '卡杜拉 / 卡杜艾 / 莫扎特音乐家系列',
+    signatureFlavor: '玫瑰葡萄干蜜 · 红糖果脯 · 烤杏仁脂香',
     story:
-      '精妙绝伦的微型水洗处理厂发源地，擅长通过精确控制留存果胶比例（黄蜜、红蜜、黑蜜）雕琢如蜂蜜糖浆般的圆润甜感。',
+      '精妙绝伦的微型水洗处理厂发源地，擅长通过精确控制留存果胶比例与风靡全球的“莫扎特葡萄干蜜处理”雕琢如蜂蜜果脯般的圆润甜感。',
     matchKeywords: ['哥斯达黎加'],
   },
   {
     id: 'guatemala',
-    name: '危地马拉 · 安提瓜',
-    englishName: 'Guatemala · Antigua',
+    name: '危地马拉 · 安提瓜与萨尔瓦多',
+    englishName: 'Guatemala Antigua & El Salvador',
     continent: '中美洲与加勒比',
     x: 215,
     y: 182,
-    altitude: '1,500 – 1,800 m',
-    climate: '三座活火山环抱的富矿盆地',
-    varieties: '波旁 / 卡杜拉',
+    altitude: '1,500 – 1,850 m',
+    climate: '活火山环抱的富矿中美洲火山带',
+    varieties: '波旁 / 卡杜拉 / 萨尔瓦多帕卡马拉',
     signatureFlavor: '牛奶可可 · 蜜渍甜橙 · 丝滑坚果',
     story:
-      '火山浮石土壤既排水良好又富含矿物质，孕育出酸甜平衡、带有独特淡雅火山烟熏与巧克力尾韵的优雅杯感。',
-    matchKeywords: ['危地马拉'],
+      '火山浮石土壤既排水良好又富含矿物质，危地马拉安提瓜与邻国萨尔瓦多象豆帕卡马拉皆以酸甜平衡、巧克力圆润尾韵闻名于世。',
+    matchKeywords: ['危地马拉', '萨尔瓦多'],
   },
   {
     id: 'jamaica',

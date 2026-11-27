@@ -122,7 +122,7 @@ export function QuickFinder({
             id="quick-finder-input"
             type="search"
             className="quick-finder-input"
-            placeholder="搜索 40 款咖啡展品、产区、风味词或工具（如 云南百花蜜 / 花魁 / 虹吸 / 诊断）…"
+            placeholder="搜索 52 款咖啡展品、产区、风味词或工具（如 云南百花蜜 / 莫扎特 / 大黄蜂 / 冰博克）…"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
