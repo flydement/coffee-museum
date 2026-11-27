@@ -8,7 +8,15 @@ export const POSTCARD_THEME_OPTIONS: {
   { id: 'parchment', label: '经典羊皮暖白', swatch: '#F6F1E7' },
   { id: 'espresso', label: '深烘黑金典藏', swatch: '#1F1611' },
   { id: 'botanical', label: '植物志鼠尾草', swatch: '#EAEFE7' },
+  { id: 'aizome', label: '京都蓝染和纸', swatch: '#192434' },
 ]
+
+const PRESET_LABEL_MAP: Record<string, string> = {
+  standard: '馆藏标准',
+  sweet: '更甜润柔和',
+  bright: '更清爽花果',
+  bold: '更浓郁醇厚',
+}
 
 function getThemeColors(theme: PostcardTheme) {
   if (theme === 'espresso') {
@@ -33,6 +41,7 @@ function getThemeColors(theme: PostcardTheme) {
       barTrack: 'rgba(247, 239, 226, 0.14)',
       barFill: '#D49B54',
       quote: '#EFE3D1',
+      seal: '#C96A56',
     }
   }
   if (theme === 'botanical') {
@@ -57,6 +66,32 @@ function getThemeColors(theme: PostcardTheme) {
       barTrack: 'rgba(54, 69, 56, 0.14)',
       barFill: '#56735A',
       quote: '#29352B',
+      seal: '#9F4234',
+    }
+  }
+  if (theme === 'aizome') {
+    return {
+      bg: '#192434',
+      vignetteInner: 'rgba(217, 178, 119, 0.08)',
+      vignetteOuter: 'rgba(9, 14, 22, 0.42)',
+      frameOuter: '#D9B277',
+      frameInner: 'rgba(217, 178, 119, 0.28)',
+      meta: '#E0BE89',
+      medallionBg: '#223146',
+      medallionBorder: '#D9B277',
+      cupBody: '#F1EAE0',
+      title: '#F6F1E9',
+      subtitle: '#AFC0D4',
+      notes: '#E2BD84',
+      boxBg: '#202E42',
+      boxBorder: 'rgba(217, 178, 119, 0.3)',
+      statLabel: '#9FB3CA',
+      statVal: '#F8F3EC',
+      barLabel: '#CBD7E6',
+      barTrack: 'rgba(246, 241, 233, 0.14)',
+      barFill: '#D9B277',
+      quote: '#E6EDF5',
+      seal: '#D6715C',
     }
   }
   return {
@@ -80,6 +115,7 @@ function getThemeColors(theme: PostcardTheme) {
     barTrack: 'rgba(74, 52, 40, 0.14)',
     barFill: '#B88446',
     quote: '#3B281E',
+    seal: '#9F4234',
   }
 }
 
@@ -96,6 +132,7 @@ export function renderPostcardDataUrl(
   if (!ctx) return ''
 
   const colors = getThemeColors(theme)
+  const isColdDrink = record.waterTempC <= 15
 
   // Background
   ctx.fillStyle = colors.bg
@@ -157,64 +194,131 @@ export function renderPostcardDataUrl(
   ctx.lineWidth = 2
   ctx.stroke()
 
-  // Stylized vintage coffee cup inside medallion
-  ctx.fillStyle = colors.cupBody
-  ctx.beginPath()
-  ctx.roundRect(cx - 64, cy - 36, 128, 76, [8, 8, 52, 52])
-  ctx.fill()
-
-  ctx.fillStyle = record.palette.liquid
-  ctx.beginPath()
-  ctx.roundRect(cx - 56, cy - 28, 112, 62, [4, 4, 44, 44])
-  ctx.fill()
-
-  ctx.fillStyle = record.palette.crema
-  ctx.beginPath()
-  ctx.ellipse(cx, cy - 28, 56, 12, 0, 0, Math.PI * 2)
-  ctx.fill()
-
-  // Cup handle
-  ctx.strokeStyle = colors.cupBody
-  ctx.lineWidth = 10
-  ctx.beginPath()
-  ctx.arc(cx + 66, cy - 4, 24, -Math.PI / 2, Math.PI / 2)
-  ctx.stroke()
-
-  // Saucer
-  ctx.strokeStyle = colors.frameOuter
-  ctx.lineWidth = 6
-  ctx.beginPath()
-  ctx.moveTo(cx - 86, cy + 52)
-  ctx.lineTo(cx + 86, cy + 52)
-  ctx.stroke()
-
-  // Steam curves
-  ctx.strokeStyle = colors.frameOuter
-  ctx.lineWidth = 3
-  ctx.lineCap = 'round'
-  ;[-24, 0, 24].forEach((offset) => {
+  if (isColdDrink) {
+    // Stylized chilled glass with floating ice cubes for cold brews & iced specials
+    ctx.fillStyle = colors.cupBody
     ctx.beginPath()
-    ctx.moveTo(cx + offset, cy - 56)
-    ctx.bezierCurveTo(
-      cx + offset - 8,
-      cy - 76,
-      cx + offset + 10,
-      cy - 88,
-      cx + offset,
-      cy - 104
-    )
-    ctx.stroke()
-  })
+    ctx.roundRect(cx - 52, cy - 64, 104, 126, [8, 8, 22, 22])
+    ctx.fill()
 
-  // Coffee Title
+    ctx.fillStyle = record.palette.liquid
+    ctx.beginPath()
+    ctx.roundRect(cx - 44, cy - 42, 88, 96, [4, 4, 16, 16])
+    ctx.fill()
+
+    ctx.fillStyle = record.palette.crema
+    ctx.beginPath()
+    ctx.ellipse(cx, cy - 42, 44, 10, 0, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Floating ice cubes
+    ctx.save()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.36)'
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.62)'
+    ctx.lineWidth = 1.5
+    ;[
+      { x: cx - 22, y: cy - 26, r: 0.18 },
+      { x: cx + 10, y: cy - 16, r: -0.22 },
+      { x: cx - 6, y: cy + 8, r: 0.1 },
+    ].forEach((cube) => {
+      ctx.save()
+      ctx.translate(cube.x, cube.y)
+      ctx.rotate(cube.r)
+      ctx.beginPath()
+      ctx.roundRect(-12, -12, 24, 24, 4)
+      ctx.fill()
+      ctx.stroke()
+      ctx.restore()
+    })
+    ctx.restore()
+
+    // Coaster & chilled shimmer stars
+    ctx.strokeStyle = colors.frameOuter
+    ctx.lineWidth = 5
+    ctx.beginPath()
+    ctx.moveTo(cx - 72, cy + 72)
+    ctx.lineTo(cx + 72, cy + 72)
+    ctx.stroke()
+
+    ctx.fillStyle = colors.frameOuter
+    ;[
+      [cx - 74, cy - 46],
+      [cx + 76, cy - 28],
+      [cx + 68, cy - 62],
+    ].forEach(([sx, sy]) => {
+      ctx.beginPath()
+      ctx.arc(sx, sy, 3.2, 0, Math.PI * 2)
+      ctx.fill()
+    })
+  } else {
+    // Stylized vintage hot coffee cup inside medallion
+    ctx.fillStyle = colors.cupBody
+    ctx.beginPath()
+    ctx.roundRect(cx - 64, cy - 36, 128, 76, [8, 8, 52, 52])
+    ctx.fill()
+
+    ctx.fillStyle = record.palette.liquid
+    ctx.beginPath()
+    ctx.roundRect(cx - 56, cy - 28, 112, 62, [4, 4, 44, 44])
+    ctx.fill()
+
+    ctx.fillStyle = record.palette.crema
+    ctx.beginPath()
+    ctx.ellipse(cx, cy - 28, 56, 12, 0, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Cup handle
+    ctx.strokeStyle = colors.cupBody
+    ctx.lineWidth = 10
+    ctx.beginPath()
+    ctx.arc(cx + 66, cy - 4, 24, -Math.PI / 2, Math.PI / 2)
+    ctx.stroke()
+
+    // Saucer
+    ctx.strokeStyle = colors.frameOuter
+    ctx.lineWidth = 6
+    ctx.beginPath()
+    ctx.moveTo(cx - 86, cy + 52)
+    ctx.lineTo(cx + 86, cy + 52)
+    ctx.stroke()
+
+    // Steam curves
+    ctx.strokeStyle = colors.frameOuter
+    ctx.lineWidth = 3
+    ctx.lineCap = 'round'
+    ;[-24, 0, 24].forEach((offset) => {
+      ctx.beginPath()
+      ctx.moveTo(cx + offset, cy - 56)
+      ctx.bezierCurveTo(
+        cx + offset - 8,
+        cy - 76,
+        cx + offset + 10,
+        cy - 88,
+        cx + offset,
+        cy - 104
+      )
+      ctx.stroke()
+    })
+  }
+
+  // Coffee Title with automatic fit to avoid overflowing antique frame
   ctx.textAlign = 'center'
   ctx.fillStyle = colors.title
-  ctx.font = '700 40px "Noto Serif SC", Georgia, serif'
+  let titleFontSize = 40
+  ctx.font = `700 ${titleFontSize}px "Noto Serif SC", Georgia, serif`
+  while (ctx.measureText(record.coffeeName).width > width - 176 && titleFontSize > 26) {
+    titleFontSize -= 2
+    ctx.font = `700 ${titleFontSize}px "Noto Serif SC", Georgia, serif`
+  }
   ctx.fillText(record.coffeeName, cx, 518)
 
   ctx.fillStyle = colors.subtitle
-  ctx.font = 'italic 500 24px "Cormorant Garamond", Georgia, serif'
-  ctx.fillText(record.englishName, cx, 556)
+  ctx.font = 'italic 500 23px "Cormorant Garamond", Georgia, serif'
+  const presetName = record.tastePreset ? PRESET_LABEL_MAP[record.tastePreset] : null
+  const subtitleLine = presetName
+    ? `${record.englishName}  ·  ${presetName}`
+    : record.englishName
+  ctx.fillText(subtitleLine, cx, 556)
 
   // Flavor notes tags
   const notesText = record.flavorNotes.join('  ·  ')
@@ -298,14 +402,32 @@ export function renderPostcardDataUrl(
   ctx.textAlign = 'right'
   ctx.fillStyle = colors.statLabel
   ctx.font = '500 16px "JetBrains Mono", monospace'
-  ctx.fillText(new Date(record.brewedAt).toLocaleDateString('zh-CN'), width - 84, 1074)
+  ctx.fillText(new Date(record.brewedAt).toLocaleDateString('zh-CN'), width - 166, 1074)
+
+  // Vintage museum curator ink stamp seal
+  ctx.save()
+  ctx.translate(width - 114, 1096)
+  ctx.rotate(-0.08)
+  ctx.strokeStyle = colors.seal
+  ctx.lineWidth = 2.2
+  ctx.beginPath()
+  ctx.roundRect(-30, -30, 60, 60, 8)
+  ctx.stroke()
+  ctx.lineWidth = 1
+  ctx.strokeRect(-24, -24, 48, 48)
+  ctx.fillStyle = colors.seal
+  ctx.textAlign = 'center'
+  ctx.font = '700 17px "Noto Serif SC", serif'
+  ctx.fillText('拾光', 0, -5)
+  ctx.fillText('鉴赏', 0, 17)
+  ctx.restore()
 
   ctx.textAlign = 'left'
   ctx.fillStyle = colors.quote
   ctx.font = '500 20px "Noto Serif SC", serif'
   const note =
     record.tastingNote.trim() || '“亲手完成的一杯馆藏风味，时间与香气在此刻定格。”'
-  const maxLineWidth = width - 168
+  const maxLineWidth = width - 252
   const lines: string[] = []
   let currentLine = ''
   for (const ch of note) {

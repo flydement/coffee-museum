@@ -7,6 +7,7 @@ import {
   GalleryIcon,
   KettleIcon,
   MuseumLogoIcon,
+  SearchIcon,
   SoundIcon,
   ThemeLampIcon,
 } from './Icons'
@@ -22,6 +23,7 @@ interface HeaderProps {
   onToggleAmbience: () => void
   soundMuted: boolean
   onToggleSoundMuted: () => void
+  onOpenQuickFinder: () => void
 }
 
 const NAV_ITEMS: { id: AppView; label: string; shortLabel: string }[] = [
@@ -43,6 +45,7 @@ export function Header({
   onToggleAmbience,
   soundMuted,
   onToggleSoundMuted,
+  onOpenQuickFinder,
 }: HeaderProps) {
   const renderIcon = (id: AppView) => {
     switch (id) {
@@ -84,6 +87,7 @@ export function Header({
                 key={item.id}
                 id={`nav-desktop-${item.id}`}
                 type="button"
+                aria-current={activeView === item.id ? 'page' : undefined}
                 className={`nav-tab ${activeView === item.id ? 'active' : ''}`}
                 onClick={() => onNavigate(item.id)}
               >
@@ -100,6 +104,17 @@ export function Header({
           </nav>
 
           <div className="header-right-actions">
+            <button
+              id="header-search-btn"
+              type="button"
+              className="icon-pill-btn header-icon-only-btn"
+              onClick={onOpenQuickFinder}
+              aria-label="打开全馆速查检索台（快捷键 Ctrl+K 或 Command+K）"
+              title="全馆速查检索（⌘K / Ctrl+K）"
+            >
+              <SearchIcon size={15} />
+            </button>
+
             <button
               id="header-mute-btn"
               type="button"
@@ -149,6 +164,7 @@ export function Header({
             key={item.id}
             id={`nav-mobile-${item.id}`}
             type="button"
+            aria-current={activeView === item.id ? 'page' : undefined}
             className={`mobile-dock-btn ${activeView === item.id ? 'active' : ''}`}
             onClick={() => onNavigate(item.id)}
           >

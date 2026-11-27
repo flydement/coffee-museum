@@ -79,6 +79,7 @@ const HERO_EXHIBITION_SLIDES = [
 ] as const
 
 const HERO_SLIDE_INTERVAL_MS = 4500
+const TOTAL_BREW_METHODS = new Set(COFFEE_EXHIBITS.map((c) => c.method)).size
 
 export function FlavorCurator({
   preference,
@@ -91,6 +92,7 @@ export function FlavorCurator({
   onToggleWishlist,
 }: FlavorCuratorProps) {
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
+  const [showMoreMatches, setShowMoreMatches] = useState(false)
   const [blindBoxOpen, setBlindBoxOpen] = useState(false)
   const [isDrawing, setIsDrawing] = useState(false)
   const [drawnCoffee, setDrawnCoffee] = useState<CoffeeExhibit>(COFFEE_EXHIBITS[0])
@@ -310,9 +312,7 @@ export function FlavorCurator({
               <div className="hero-metric-label">世界代表性馆藏风味</div>
             </div>
             <div>
-              <div className="hero-metric-val">
-                {new Set(COFFEE_EXHIBITS.map((c) => c.method)).size}
-              </div>
+              <div className="hero-metric-val">{TOTAL_BREW_METHODS}</div>
               <div className="hero-metric-label">动态器具实时萃取引导</div>
             </div>
             <div>
@@ -622,7 +622,7 @@ export function FlavorCurator({
           </div>
 
           <div className="exhibit-grid">
-            {rankedExhibits.slice(0, 6).map(({ coffee, match }) => {
+            {rankedExhibits.slice(0, showMoreMatches ? 12 : 6).map(({ coffee, match }) => {
               const wished = wishlistIds.has(coffee.id)
               return (
                 <article
@@ -726,6 +726,23 @@ export function FlavorCurator({
                 </article>
               )
             })}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => setShowMoreMatches((prev) => !prev)}
+            >
+              {showMoreMatches ? '收起至前 6 款高匹配 ↑' : '展开更多高契合馆藏（前 12 款）↓'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={onOpenGallery}
+            >
+              前往展厅按条件精筛全部 {COFFEE_EXHIBITS.length} 款 →
+            </button>
           </div>
         </div>
       </section>

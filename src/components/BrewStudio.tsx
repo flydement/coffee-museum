@@ -21,12 +21,24 @@ import {
   stopBrewSpeech,
   TASTE_PRESET_OPTIONS,
 } from '../utils/platform'
+import { buildShareUrl } from '../utils/router'
 import { BrewAnimation } from './BrewAnimation'
 import { FlavorRadar } from './FlavorRadar'
 import { SoundIcon } from './Icons'
 
+const QUICK_TASTING_CHIPS = [
+  '花果香清晰',
+  '酸质明亮顺口',
+  '焦糖甜感饱满',
+  '醇厚顺滑',
+  '尾韵干净回甘',
+  '下次略调细研磨',
+  '下次微降 2°C 水温',
+]
+
 interface BrewStudioProps {
   coffee: CoffeeExhibit
+  isActive?: boolean
   servings: number
   tastePreset: TasteCustomizePreset
   soundMuted: boolean
@@ -43,6 +55,7 @@ interface BrewStudioProps {
 
 export function BrewStudio({
   coffee,
+  isActive = true,
   servings,
   tastePreset,
   soundMuted,
@@ -64,6 +77,7 @@ export function BrewStudio({
   const [isComplete, setIsComplete] = useState(false)
   const [prepChecks, setPrepChecks] = useState<string[]>([])
   const [copiedRecipe, setCopiedRecipe] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   // Completion tasting ceremony state
   const [rating, setRating] = useState(5)
@@ -129,7 +143,7 @@ export function BrewStudio({
     }
   }, [currentStep.durationSec])
 
-  // Drift-free 1s interval (no remainingSec in deps; all state updates happen inside async timer callback)
+  // Drift-free 1s interval with gentle 3-2-1 countdown audio cues
   useEffect(() => {
     if (!isRunning || isComplete) return
     const timer = window.setInterval(() => {
@@ -161,6 +175,9 @@ export function BrewStudio({
       } else {
         const nextVal = current - 1
         remainingRef.current = nextVal
+        if (nextVal <= 3 && nextVal >= 1 && !soundMuted) {
+          playGentleChime('countdown')
+        }
         setRemainingSec(nextVal)
       }
     }, 1000)
@@ -188,9 +205,11 @@ export function BrewStudio({
     }
   }, [isComplete, isRunning])
 
-  // Keyboard shortcuts for PC/Web ergonomics
+  // Keyboard shortcuts for PC/Web ergonomics (active only when studio hall is visible)
   useEffect(() => {
+    if (!isActive) return
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
       const tag = (e.target as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if (isComplete) return
@@ -204,11 +223,27 @@ export function BrewStudio({
       } else if (e.key === 'ArrowLeft' && stepIndex > 0) {
         e.preventDefault()
         goToStep(stepIndex - 1, false)
+      } else if ((e.key === 'r' || e.key === 'R') && currentStep.durationSec > 0) {
+        e.preventDefault()
+        setIsRunning(false)
+        remainingRef.current = currentStep.durationSec
+        setRemainingSec(currentStep.durationSec)
+      } else if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault()
+        onToggleSoundMuted()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [currentStep.durationSec, goToStep, isComplete, stepIndex, toggleOrRestartTimer])
+  }, [
+    currentStep.durationSec,
+    goToStep,
+    isActive,
+    isComplete,
+    onToggleSoundMuted,
+    stepIndex,
+    toggleOrRestartTimer,
+  ])
 
   const stepDuration = currentStep.durationSec
   const stepProgress =
@@ -292,6 +327,17 @@ export function BrewStudio({
     [coffee.steps]
   )
 
+  const totalElapsedSec = useMemo(() => {
+    const pastSec = coffee.steps
+      .slice(0, stepIndex)
+      .reduce((sum, s) => sum + s.durationSec, 0)
+    const curElapsed =
+      currentStep.durationSec > 0
+        ? Math.max(0, currentStep.durationSec - remainingSec)
+        : 0
+    return pastSec + curElapsed
+  }, [coffee.steps, currentStep.durationSec, remainingSec, stepIndex])
+
   const handleCopyStudioRecipe = async () => {
     const ok = await copyTextToClipboard(formatRecipeShareText(coffee, servings, tastePreset))
     if (ok) {
@@ -299,6 +345,26 @@ export function BrewStudio({
       setCopiedRecipe(true)
       window.setTimeout(() => setCopiedRecipe(false), 2200)
     }
+  }
+
+  const handleCopyBrewLink = async () => {
+    const url = buildShareUrl({ view: 'studio', brewCoffeeId: coffee.id })
+    const ok = await copyTextToClipboard(url)
+    if (ok) {
+      if (!soundMuted) playGentleChime('tick')
+      setCopiedLink(true)
+      window.setTimeout(() => setCopiedLink(false), 2200)
+    }
+  }
+
+  const handleAppendTastingChip = (chip: string) => {
+    if (!soundMuted) playGentleChime('tick')
+    setTastingNote((prev) => {
+      const trimmed = prev.trim()
+      if (!trimmed) return chip
+      if (trimmed.includes(chip)) return prev
+      return `${trimmed}，${chip}`
+    })
   }
 
   const currentYear = useMemo(() => new Date(completedAt).getFullYear(), [completedAt])
@@ -464,6 +530,16 @@ export function BrewStudio({
           >
             <span>{copiedRecipe ? '✓ 已复制配方' : '复制配方'}</span>
           </button>
+
+          <button
+            id="studio-copy-link-btn"
+            type="button"
+            className={`icon-pill-btn ${copiedLink ? 'active' : ''}`}
+            onClick={handleCopyBrewLink}
+            title="复制此款咖啡冲煮工坊的直达链接"
+          >
+            <span>{copiedLink ? '✓ 已复制链接' : '分享链接'}</span>
+          </button>
         </div>
       </div>
 
@@ -595,10 +671,27 @@ export function BrewStudio({
                   ))}
                 </div>
 
+                <div className="pill-row" style={{ marginBottom: 10 }} aria-label="快捷品鉴风味词">
+                  {QUICK_TASTING_CHIPS.map((chip) => {
+                    const selected = tastingNote.includes(chip)
+                    return (
+                      <button
+                        key={chip}
+                        type="button"
+                        className={`mood-pill ${selected ? 'active' : ''}`}
+                        style={{ padding: '4px 10px', fontSize: '0.76rem' }}
+                        onClick={() => handleAppendTastingChip(chip)}
+                      >
+                        + {chip}
+                      </button>
+                    )
+                  })}
+                </div>
+
                 <textarea
                   id="tasting-note-input"
                   className="tasting-textarea"
-                  placeholder="写一句今天的品鉴手记，例如：前段茉莉花香很明显，放凉一点后白桃甜感太惊艳了…"
+                  placeholder="写一句今天的品鉴手记，或点击上方风味短签一键组合…"
                   value={tastingNote}
                   onChange={(e) => setTastingNote(e.target.value)}
                 />
@@ -641,7 +734,7 @@ export function BrewStudio({
                   ✓ 已永久收入「我的馆藏」 · 编号 {savedRecord.catalogNumber}
                 </div>
                 <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: 'var(--espresso-800)' }}>
-                  可在左侧切换三种纸张主题并导出高清纪念明信片，或前往馆藏陈列室查看已解锁徽章。
+                  可在左侧切换四种复古纸张主题并导出高清纪念明信片，或前往馆藏陈列室查看已解锁徽章。
                 </p>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <button
@@ -736,7 +829,7 @@ export function BrewStudio({
               <div className="brew-timeline-head">
                 <span>全程萃取时间轴</span>
                 <span className="mono">
-                  总计时 {formatSeconds(totalTimedSec)} · 剩余 {formatSeconds(totalRemainingSec)}
+                  已用 {formatSeconds(totalElapsedSec)} / 总长 {formatSeconds(totalTimedSec)} · 剩余 {formatSeconds(totalRemainingSec)}
                 </span>
               </div>
               <div className="brew-timeline-bar">
@@ -778,7 +871,7 @@ export function BrewStudio({
               <span>
                 水温：{scaled.waterTempC}°C · 粉水比 {coffee.recipe.ratioLabel}
               </span>
-              <span>PC 快捷键：空格计时 · ←/→ 切步</span>
+              <span>快捷键：空格计时 · ←/→ 切步 · R 重置 · M 静音</span>
             </div>
           </div>
 

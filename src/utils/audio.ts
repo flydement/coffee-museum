@@ -31,25 +31,27 @@ function getAudioContext(): AudioContext | null {
   return sharedCtx
 }
 
-export function playGentleChime(type: 'step' | 'complete' | 'tick' = 'step') {
+export function playGentleChime(
+  type: 'step' | 'complete' | 'tick' | 'countdown' = 'step'
+) {
   if (globalSoundMuted) return
   try {
     const ctx = getAudioContext()
     if (!ctx) return
 
     const now = ctx.currentTime
-    if (type === 'tick') {
+    if (type === 'tick' || type === 'countdown') {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
-      osc.type = 'triangle'
-      osc.frequency.setValueAtTime(720, now)
+      osc.type = type === 'countdown' ? 'sine' : 'triangle'
+      osc.frequency.setValueAtTime(type === 'countdown' ? 987.77 : 720, now)
       gain.gain.setValueAtTime(0.0001, now)
-      gain.gain.exponentialRampToValueAtTime(0.028, now + 0.01)
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08)
+      gain.gain.exponentialRampToValueAtTime(type === 'countdown' ? 0.042 : 0.028, now + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + (type === 'countdown' ? 0.13 : 0.08))
       osc.connect(gain)
       gain.connect(ctx.destination)
       osc.start(now)
-      osc.stop(now + 0.09)
+      osc.stop(now + (type === 'countdown' ? 0.14 : 0.09))
       return
     }
 

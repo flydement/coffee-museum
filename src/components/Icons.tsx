@@ -96,6 +96,15 @@ export function AtlasIcon({ size = 18 }: IconProps) {
   )
 }
 
+export function SearchIcon({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="11" cy="11" r="6.8" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M16.2 16.2L20.4 20.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export function SoundIcon({ muted, size = 18 }: { muted: boolean; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">

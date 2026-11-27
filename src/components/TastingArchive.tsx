@@ -7,6 +7,7 @@ import type {
   SavedBrewRecord,
   TasteCustomizePreset,
 } from '../types/coffee'
+import { sanitizeImportedRecord } from '../utils/archive'
 import {
   downloadTastingPostcard,
   POSTCARD_THEME_OPTIONS,
@@ -14,9 +15,11 @@ import {
 } from '../utils/exportCard'
 import { computeCuratorBadges } from '../utils/platform'
 import { FlavorRadar } from './FlavorRadar'
+import { CupEmblem } from './Icons'
 
 interface TastingArchiveProps {
   records: SavedBrewRecord[]
+  wishlistIds: Set<string>
   bestQuizScore: number
   onDeleteRecord: (recordId: string) => void
   onUpdateRecord: (
@@ -24,6 +27,9 @@ interface TastingArchiveProps {
     updates: { rating: number; tastingNote: string }
   ) => void
   onImportRecords: (records: SavedBrewRecord[]) => { added: number; skipped: number }
+  onToggleWishlist: (coffeeId: string) => void
+  onInspectCoffee: (coffee: CoffeeExhibit) => void
+  onApplyFlavorPortrait: (profile: FlavorProfile) => void
   onRebrew: (
     coffee: CoffeeExhibit,
     servings: number,
@@ -32,87 +38,16 @@ interface TastingArchiveProps {
   onGoCurator: () => void
 }
 
-function sanitizeImportedRecord(raw: unknown): SavedBrewRecord | null {
-  if (!raw || typeof raw !== 'object') return null
-  const item = raw as Partial<SavedBrewRecord>
-  if (typeof item.recordId !== 'string' || typeof item.coffeeId !== 'string') return null
-  const fallbackCoffee =
-    COFFEE_EXHIBITS.find((c) => c.id === item.coffeeId) ?? COFFEE_EXHIBITS[0]
-
-  const clampAxis = (v: unknown, def: number) =>
-    typeof v === 'number' && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : def
-
-  const fp = item.flavorProfile
-  const safeProfile: FlavorProfile = {
-    acidity: clampAxis(fp?.acidity, fallbackCoffee.flavorProfile.acidity),
-    sweetness: clampAxis(fp?.sweetness, fallbackCoffee.flavorProfile.sweetness),
-    body: clampAxis(fp?.body, fallbackCoffee.flavorProfile.body),
-    bitterness: clampAxis(fp?.bitterness, fallbackCoffee.flavorProfile.bitterness),
-    aroma: clampAxis(fp?.aroma, fallbackCoffee.flavorProfile.aroma),
-  }
-
-  const safeRating =
-    typeof item.rating === 'number' && Number.isFinite(item.rating)
-      ? Math.min(5, Math.max(1, Math.round(item.rating)))
-      : 5
-
-  return {
-    recordId: item.recordId,
-    catalogNumber:
-      typeof item.catalogNumber === 'string' && item.catalogNumber.trim()
-        ? item.catalogNumber
-        : `#${new Date().getFullYear()}-IMP`,
-    coffeeId: item.coffeeId,
-    coffeeName: typeof item.coffeeName === 'string' ? item.coffeeName : fallbackCoffee.name,
-    englishName:
-      typeof item.englishName === 'string' ? item.englishName : fallbackCoffee.englishName,
-    exhibitNo: typeof item.exhibitNo === 'string' ? item.exhibitNo : fallbackCoffee.exhibitNo,
-    methodLabel:
-      typeof item.methodLabel === 'string' ? item.methodLabel : fallbackCoffee.methodLabel,
-    servings:
-      typeof item.servings === 'number' && item.servings > 0 ? item.servings : 1,
-    tastePreset: item.tastePreset,
-    doseGrams:
-      typeof item.doseGrams === 'number' && item.doseGrams > 0
-        ? item.doseGrams
-        : fallbackCoffee.recipe.doseGrams,
-    waterMl:
-      typeof item.waterMl === 'number' && item.waterMl > 0
-        ? item.waterMl
-        : fallbackCoffee.recipe.waterMl,
-    milkMl:
-      typeof item.milkMl === 'number' && item.milkMl > 0 ? item.milkMl : undefined,
-    waterTempC:
-      typeof item.waterTempC === 'number' && Number.isFinite(item.waterTempC)
-        ? item.waterTempC
-        : fallbackCoffee.recipe.waterTempC,
-    rating: safeRating,
-    tastingNote: typeof item.tastingNote === 'string' ? item.tastingNote : '',
-    brewedAt:
-      typeof item.brewedAt === 'string' && !Number.isNaN(Date.parse(item.brewedAt))
-        ? item.brewedAt
-        : new Date().toISOString(),
-    flavorNotes:
-      Array.isArray(item.flavorNotes) && item.flavorNotes.every((n) => typeof n === 'string')
-        ? item.flavorNotes
-        : fallbackCoffee.flavorNotes,
-    flavorProfile: safeProfile,
-    palette:
-      item.palette &&
-      typeof item.palette.liquid === 'string' &&
-      typeof item.palette.crema === 'string' &&
-      typeof item.palette.accent === 'string'
-        ? item.palette
-        : fallbackCoffee.palette,
-  }
-}
-
 export function TastingArchive({
   records,
+  wishlistIds,
   bestQuizScore,
   onDeleteRecord,
   onUpdateRecord,
   onImportRecords,
+  onToggleWishlist,
+  onInspectCoffee,
+  onApplyFlavorPortrait,
   onRebrew,
   onGoCurator,
 }: TastingArchiveProps) {
@@ -126,6 +61,35 @@ export function TastingArchive({
   const [editNote, setEditNote] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const wishlistedCoffees = useMemo(
+    () => COFFEE_EXHIBITS.filter((c) => wishlistIds.has(c.id)),
+    [wishlistIds]
+  )
+
+  const brewInsights = useMemo(() => {
+    if (records.length === 0) return null
+    const totalBeansG = Math.round(
+      records.reduce((sum, r) => sum + (Number.isFinite(r.doseGrams) ? r.doseGrams : 0), 0) * 10
+    ) / 10
+    const methodCounts = new Map<string, number>()
+    for (const r of records) {
+      methodCounts.set(r.methodLabel, (methodCounts.get(r.methodLabel) ?? 0) + 1)
+    }
+    let favoriteMethod = records[0].methodLabel
+    let maxMethodCount = 0
+    for (const [label, count] of methodCounts.entries()) {
+      if (count > maxMethodCount) {
+        maxMethodCount = count
+        favoriteMethod = label
+      }
+    }
+    return {
+      totalBeansG,
+      favoriteMethod,
+      favoriteMethodCount: maxMethodCount,
+    }
+  }, [records])
 
   const filteredRecords = useMemo(() => {
     const q = archiveSearch.trim().toLowerCase()
@@ -220,7 +184,7 @@ export function TastingArchive({
         const parsed = JSON.parse(String(reader.result))
         if (Array.isArray(parsed)) {
           const sanitized = parsed
-            .map(sanitizeImportedRecord)
+            .map((item) => sanitizeImportedRecord(item, COFFEE_EXHIBITS))
             .filter((item): item is SavedBrewRecord => item !== null)
           if (sanitized.length === 0) {
             setBackupNotice('未在文件中识别到有效的馆藏记录')
@@ -250,7 +214,7 @@ export function TastingArchive({
           <p className="eyebrow">PERSONAL TASTING ARCHIVE · 个人馆藏陈列室</p>
           <h1 className="section-heading">我亲手冲煮的咖啡馆藏</h1>
           <p className="section-lead">
-            每一次完成的冲煮都会被编入专属馆藏编号，支持切换三种复古纸张导出明信片，或跨端备份迁移你的品鉴记录。
+            每一次完成的冲煮都会被编入专属馆藏编号，支持切换四种复古纸张导出明信片，或跨端备份迁移你的品鉴记录。
           </p>
         </div>
 
@@ -355,20 +319,101 @@ export function TastingArchive({
             <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', margin: '0 0 8px' }}>
               基于你已冲煮的 {records.length} 杯馆藏生成的风味指纹
             </h2>
-            <p className="section-lead" style={{ margin: '0 0 12px' }}>
+            <p className="section-lead" style={{ margin: '0 0 10px' }}>
               酸度均值 {averageFlavorProfile.acidity} · 甜感均值 {averageFlavorProfile.sweetness} · 醇厚均值{' '}
               {averageFlavorProfile.body} · 苦韵均值 {averageFlavorProfile.bitterness} · 花果香均值{' '}
               {averageFlavorProfile.aroma}
             </p>
-            <div className="pill-row">
+            {brewInsights && (
+              <p className="mono" style={{ fontSize: '0.8rem', color: 'var(--espresso-600)', margin: '0 0 12px' }}>
+                累计手冲耗豆 {brewInsights.totalBeansG} g · 最常使用器具：{brewInsights.favoriteMethod}（{brewInsights.favoriteMethodCount} 次）
+              </p>
+            )}
+            <div className="pill-row" style={{ marginBottom: 14 }}>
               {averageFlavorProfile.sweetness >= 80 && <span className="tag tag-brass">偏爱甘甜圆润</span>}
               {averageFlavorProfile.acidity >= 65 && <span className="tag tag-brass">偏爱明亮果酸</span>}
               {averageFlavorProfile.body >= 78 && <span className="tag tag-brass">偏爱丝绒醇厚</span>}
               {averageFlavorProfile.aroma >= 85 && <span className="tag tag-sage">花果香气控</span>}
             </div>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => onApplyFlavorPortrait(averageFlavorProfile)}
+            >
+              ✦ 按我的风味指纹一键去策展 →
+            </button>
           </div>
           <div style={{ flex: '0 0 auto', margin: '0 auto' }}>
             <FlavorRadar profile={averageFlavorProfile} size={186} />
+          </div>
+        </section>
+      )}
+
+      {/* Wishlisted Exhibits Shelf */}
+      {wishlistedCoffees.length > 0 && (
+        <section style={{ marginBottom: 26 }} aria-label="我的想喝清单">
+          <div className="results-header" style={{ marginBottom: 12 }}>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', margin: 0 }}>
+              ♥ 我的想喝清单（{wishlistedCoffees.length} 款待打卡）
+            </h2>
+          </div>
+          <div className="wishlist-shelf-grid">
+            {wishlistedCoffees.map((c) => (
+              <div key={c.id} className="atlas-mini-exhibit">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <CupEmblem
+                    method={c.method}
+                    liquid={c.palette.liquid}
+                    crema={c.palette.crema}
+                  />
+                  <div style={{ minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-serif)',
+                        fontWeight: 700,
+                        fontSize: '0.94rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {c.name}
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--espresso-600)' }}>
+                      {c.exhibitNo} · {c.methodLabel} · {c.roast}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    style={{ padding: '4px 10px', fontSize: '0.76rem' }}
+                    onClick={() => onInspectCoffee(c)}
+                  >
+                    档案
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    style={{ padding: '4px 10px', fontSize: '0.76rem' }}
+                    onClick={() => onRebrew(c, 1, 'standard')}
+                  >
+                    冲煮
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ padding: '4px 8px', fontSize: '0.74rem' }}
+                    aria-label={`将 ${c.name} 移出想喝清单`}
+                    title="移出想喝清单"
+                    onClick={() => onToggleWishlist(c.id)}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       )}

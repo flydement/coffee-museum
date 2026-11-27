@@ -14,6 +14,7 @@ import {
   scaleRecipe,
   TASTE_PRESET_OPTIONS,
 } from '../utils/platform'
+import { buildShareUrl } from '../utils/router'
 import { FlavorRadar } from './FlavorRadar'
 import { BookmarkHeartIcon, CupEmblem } from './Icons'
 
@@ -663,6 +664,7 @@ function SpecimenModal({
   ) => void
 }) {
   const [copiedRecipe, setCopiedRecipe] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
   const scaled = scaleRecipe(coffee, servings, tastePreset)
   const extra = EXHIBIT_EXTRAS[coffee.id]
 
@@ -672,6 +674,17 @@ function SpecimenModal({
       playGentleChime('tick')
       setCopiedRecipe(true)
       window.setTimeout(() => setCopiedRecipe(false), 2200)
+    }
+  }
+
+  const handleCopyExhibitLink = async () => {
+    const ok = await copyTextToClipboard(
+      buildShareUrl({ view: 'gallery', exhibitId: coffee.id })
+    )
+    if (ok) {
+      playGentleChime('tick')
+      setCopiedLink(true)
+      window.setTimeout(() => setCopiedLink(false), 2200)
     }
   }
 
@@ -867,14 +880,24 @@ function SpecimenModal({
               >
                 按此参数进入冲煮工坊（{coffee.steps.length} 步）
               </button>
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                style={{ width: '100%' }}
-                onClick={handleCopyRecipe}
-              >
-                {copiedRecipe ? '✓ 已复制完整冲煮配方到剪贴板' : '复制文字配方分享给好友'}
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ flex: 1 }}
+                  onClick={handleCopyRecipe}
+                >
+                  {copiedRecipe ? '✓ 已复制配方' : '复制文字配方'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ flex: 1 }}
+                  onClick={handleCopyExhibitLink}
+                >
+                  {copiedLink ? '✓ 已复制直达链接' : '分享展品链接'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

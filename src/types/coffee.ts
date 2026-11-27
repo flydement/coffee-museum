@@ -31,7 +31,9 @@ export type StepPhase =
 
 export type TasteCustomizePreset = 'standard' | 'sweet' | 'bright' | 'bold'
 
-export type PostcardTheme = 'parchment' | 'espresso' | 'botanical'
+export type PostcardTheme = 'parchment' | 'espresso' | 'botanical' | 'aizome'
+
+export type AtlasSection = 'map' | 'wheel' | 'craft' | 'troubleshoot' | 'quiz'
 
 export type MuseumTheme = 'daylight' | 'kissaten'
 

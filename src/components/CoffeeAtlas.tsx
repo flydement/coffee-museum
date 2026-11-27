@@ -9,7 +9,7 @@ import {
   type CoffeeTriviaQuestion,
 } from '../data/atlas'
 import { COFFEE_EXHIBITS } from '../data/coffees'
-import type { CoffeeExhibit } from '../types/coffee'
+import type { AtlasSection, CoffeeExhibit } from '../types/coffee'
 import { playGentleChime } from '../utils/platform'
 import { CupEmblem } from './Icons'
 
@@ -18,9 +18,9 @@ interface CoffeeAtlasProps {
   onStartBrew: (coffee: CoffeeExhibit) => void
   bestQuizScore: number
   onFinishQuiz: (score: number, total: number) => void
+  activeSection?: AtlasSection
+  onChangeSection?: (section: AtlasSection) => void
 }
-
-type AtlasSection = 'map' | 'wheel' | 'craft' | 'troubleshoot' | 'quiz'
 
 function pickQuizRound(count = 5): CoffeeTriviaQuestion[] {
   const pool = [...COFFEE_TRIVIA_QUESTIONS]
@@ -36,8 +36,15 @@ export function CoffeeAtlas({
   onStartBrew,
   bestQuizScore,
   onFinishQuiz,
+  activeSection,
+  onChangeSection,
 }: CoffeeAtlasProps) {
-  const [section, setSection] = useState<AtlasSection>('map')
+  const [internalSection, setInternalSection] = useState<AtlasSection>('map')
+  const section = activeSection ?? internalSection
+  const setSection = (next: AtlasSection) => {
+    setInternalSection(next)
+    onChangeSection?.(next)
+  }
   const [selectedOriginId, setSelectedOriginId] = useState<string>(COFFEE_ORIGINS[0].id)
   const [selectedWheelId, setSelectedWheelId] = useState<string>(FLAVOR_WHEEL_FAMILIES[0].id)
   const [wheelExpanded, setWheelExpanded] = useState<boolean>(false)

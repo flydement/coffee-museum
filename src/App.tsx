@@ -1,17 +1,21 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { FlavorCurator } from './components/FlavorCurator'
 import { Header } from './components/Header'
+import { QuickFinder } from './components/QuickFinder'
 import { COFFEE_EXHIBITS } from './data/coffees'
 import type {
   AppView,
+  AtlasSection,
   CoffeeExhibit,
   FlavorPreference,
+  FlavorProfile,
   MuseumTheme,
   SavedBrewRecord,
   TasteCustomizePreset,
 } from './types/coffee'
 import { setCafeAmbience, setSoundMuted } from './utils/platform'
+import { buildMuseumHash, parseMuseumHash } from './utils/router'
 import { APP_VERSION } from './utils/version'
 
 const MuseumGallery = lazy(() =>
@@ -81,8 +85,25 @@ function loadSoundMuted(): boolean {
   }
 }
 
+function resolveInitialRoute() {
+  if (typeof window === 'undefined') {
+    return parseMuseumHash('', COFFEE_EXHIBITS)
+  }
+  return parseMuseumHash(window.location.hash, COFFEE_EXHIBITS)
+}
+
 export default function App() {
-  const [activeView, setActiveView] = useState<AppView>('curator')
+  const [initialRoute] = useState(() => resolveInitialRoute())
+
+  const [activeView, setActiveView] = useState<AppView>(initialRoute.view)
+  const [atlasSection, setAtlasSection] = useState<AtlasSection>(
+    initialRoute.atlasSection ?? 'map'
+  )
+  const [studioMounted, setStudioMounted] = useState<boolean>(
+    initialRoute.view === 'studio'
+  )
+  const [quickFinderOpen, setQuickFinderOpen] = useState(false)
+
   const [theme, setTheme] = useState<MuseumTheme>(() => loadTheme())
   const [ambienceOn, setAmbienceOn] = useState(false)
   const [soundMuted, setSoundMutedState] = useState<boolean>(() => loadSoundMuted())
@@ -97,12 +118,22 @@ export default function App() {
     selectedMoods: [],
   })
 
-  const [inspectedCoffee, setInspectedCoffee] = useState<CoffeeExhibit | null>(null)
-  const [activeBrewCoffee, setActiveBrewCoffee] = useState<CoffeeExhibit>(COFFEE_EXHIBITS[0])
+  const [inspectedCoffee, setInspectedCoffee] = useState<CoffeeExhibit | null>(() =>
+    initialRoute.exhibitId
+      ? COFFEE_EXHIBITS.find((c) => c.id === initialRoute.exhibitId) ?? null
+      : null
+  )
+  const [activeBrewCoffee, setActiveBrewCoffee] = useState<CoffeeExhibit>(() =>
+    initialRoute.brewCoffeeId
+      ? COFFEE_EXHIBITS.find((c) => c.id === initialRoute.brewCoffeeId) ?? COFFEE_EXHIBITS[0]
+      : COFFEE_EXHIBITS[0]
+  )
   const [activeServings, setActiveServings] = useState<number>(1)
   const [activeTastePreset, setActiveTastePreset] =
     useState<TasteCustomizePreset>('standard')
-  const [hasActiveBrew, setHasActiveBrew] = useState<boolean>(false)
+  const [hasActiveBrew, setHasActiveBrew] = useState<boolean>(
+    Boolean(initialRoute.brewCoffeeId)
+  )
 
   const [archive, setArchive] = useState<SavedBrewRecord[]>(() => loadArchive())
   const [wishlist, setWishlist] = useState<string[]>(() => loadWishlist())
@@ -152,6 +183,60 @@ export default function App() {
     }
   }, [])
 
+  // Sync active museum route to browser hash for deep-linking & refresh persistence
+  useEffect(() => {
+    const nextHash = buildMuseumHash({
+      view: activeView,
+      exhibitId: activeView === 'gallery' ? inspectedCoffee?.id : undefined,
+      brewCoffeeId: activeView === 'studio' ? activeBrewCoffee.id : undefined,
+      atlasSection: activeView === 'atlas' ? atlasSection : undefined,
+    })
+    if (window.location.hash !== nextHash) {
+      window.history.replaceState(null, '', nextHash)
+    }
+  }, [activeBrewCoffee.id, activeView, atlasSection, inspectedCoffee?.id])
+
+  // Support browser Back/Forward & external hash changes
+  useEffect(() => {
+    const onHashChange = () => {
+      const parsed = parseMuseumHash(window.location.hash, COFFEE_EXHIBITS)
+      setActiveView(parsed.view)
+      if (parsed.view === 'studio') {
+        setStudioMounted(true)
+        if (parsed.brewCoffeeId) {
+          const match = COFFEE_EXHIBITS.find((c) => c.id === parsed.brewCoffeeId)
+          if (match) {
+            setActiveBrewCoffee(match)
+            setHasActiveBrew(true)
+          }
+        }
+      }
+      if (parsed.view === 'gallery') {
+        const match = parsed.exhibitId
+          ? COFFEE_EXHIBITS.find((c) => c.id === parsed.exhibitId) ?? null
+          : null
+        setInspectedCoffee(match)
+      }
+      if (parsed.view === 'atlas' && parsed.atlasSection) {
+        setAtlasSection(parsed.atlasSection)
+      }
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  // Global Quick Finder shortcut: Cmd+K / Ctrl+K
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setQuickFinderOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   const unlockedIds = useMemo(
     () => new Set(archive.map((rec) => rec.coffeeId)),
     [archive]
@@ -179,27 +264,54 @@ export default function App() {
     setSoundMutedState((prev) => !prev)
   }
 
-  const handleNavigate = (view: AppView) => {
+  const handleNavigate = useCallback((view: AppView, nextAtlasSection?: AtlasSection) => {
     setActiveView(view)
+    if (view === 'studio') setStudioMounted(true)
+    if (view === 'atlas' && nextAtlasSection) {
+      setAtlasSection(nextAtlasSection)
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  }, [])
 
-  const handleStartBrew = (
-    coffee: CoffeeExhibit,
-    servings = 1,
-    tastePreset: TasteCustomizePreset = 'standard'
-  ) => {
-    setActiveBrewCoffee(coffee)
-    setActiveServings(servings)
-    setActiveTastePreset(tastePreset)
-    setHasActiveBrew(true)
-    handleNavigate('studio')
-  }
+  const handleStartBrew = useCallback(
+    (
+      coffee: CoffeeExhibit,
+      servings = 1,
+      tastePreset: TasteCustomizePreset = 'standard'
+    ) => {
+      setActiveBrewCoffee(coffee)
+      setActiveServings(servings)
+      setActiveTastePreset(tastePreset)
+      setHasActiveBrew(true)
+      setStudioMounted(true)
+      handleNavigate('studio')
+    },
+    [handleNavigate]
+  )
 
-  const handleInspectFromCurator = (coffee: CoffeeExhibit) => {
-    setInspectedCoffee(coffee)
-    handleNavigate('gallery')
-  }
+  const handleInspectFromCurator = useCallback(
+    (coffee: CoffeeExhibit) => {
+      setInspectedCoffee(coffee)
+      handleNavigate('gallery')
+    },
+    [handleNavigate]
+  )
+
+  const handleApplyFlavorPortrait = useCallback(
+    (profile: FlavorProfile) => {
+      setPreference({
+        style: 'all',
+        temperature: 'all',
+        acidity: profile.acidity,
+        sweetness: profile.sweetness,
+        body: profile.body,
+        bitterness: profile.bitterness,
+        selectedMoods: [],
+      })
+      handleNavigate('curator')
+    },
+    [handleNavigate]
+  )
 
   const handleSaveArchive = (record: SavedBrewRecord) => {
     setArchive((prev) => [record, ...prev])
@@ -250,7 +362,7 @@ export default function App() {
     <div className="app-shell">
       <Header
         activeView={activeView}
-        onNavigate={handleNavigate}
+        onNavigate={(view) => handleNavigate(view)}
         archiveCount={archive.length}
         hasActiveBrew={hasActiveBrew}
         theme={theme}
@@ -259,6 +371,7 @@ export default function App() {
         onToggleAmbience={handleToggleAmbience}
         soundMuted={soundMuted}
         onToggleSoundMuted={handleToggleSoundMuted}
+        onOpenQuickFinder={() => setQuickFinderOpen(true)}
       />
 
       <main className="main-content">
@@ -301,26 +414,29 @@ export default function App() {
               />
             )}
 
-            {activeView === 'studio' && (
-              <BrewStudio
-                key={activeBrewCoffee.id}
-                coffee={activeBrewCoffee}
-                servings={activeServings}
-                tastePreset={activeTastePreset}
-                soundMuted={soundMuted}
-                onToggleSoundMuted={handleToggleSoundMuted}
-                onChangeCoffee={(c) => {
-                  setActiveBrewCoffee(c)
-                  setHasActiveBrew(true)
-                }}
-                onChangeServings={setActiveServings}
-                onChangeTastePreset={setActiveTastePreset}
-                onSaveToArchive={handleSaveArchive}
-                onBrewComplete={() => setHasActiveBrew(false)}
-                onBrewRestart={() => setHasActiveBrew(true)}
-                onGoArchive={() => handleNavigate('archive')}
-                existingCount={archive.length}
-              />
+            {studioMounted && (
+              <div hidden={activeView !== 'studio'}>
+                <BrewStudio
+                  key={activeBrewCoffee.id}
+                  coffee={activeBrewCoffee}
+                  isActive={activeView === 'studio'}
+                  servings={activeServings}
+                  tastePreset={activeTastePreset}
+                  soundMuted={soundMuted}
+                  onToggleSoundMuted={handleToggleSoundMuted}
+                  onChangeCoffee={(c) => {
+                    setActiveBrewCoffee(c)
+                    setHasActiveBrew(true)
+                  }}
+                  onChangeServings={setActiveServings}
+                  onChangeTastePreset={setActiveTastePreset}
+                  onSaveToArchive={handleSaveArchive}
+                  onBrewComplete={() => setHasActiveBrew(false)}
+                  onBrewRestart={() => setHasActiveBrew(true)}
+                  onGoArchive={() => handleNavigate('archive')}
+                  existingCount={archive.length}
+                />
+              </div>
             )}
 
             {activeView === 'atlas' && (
@@ -329,16 +445,22 @@ export default function App() {
                 onStartBrew={(c) => handleStartBrew(c, 1, 'standard')}
                 bestQuizScore={bestQuizScore}
                 onFinishQuiz={(score) => handleFinishQuiz(score)}
+                activeSection={atlasSection}
+                onChangeSection={setAtlasSection}
               />
             )}
 
             {activeView === 'archive' && (
               <TastingArchive
                 records={archive}
+                wishlistIds={wishlistIds}
                 bestQuizScore={bestQuizScore}
                 onDeleteRecord={handleDeleteRecord}
                 onUpdateRecord={handleUpdateRecord}
                 onImportRecords={handleImportRecords}
+                onToggleWishlist={handleToggleWishlist}
+                onInspectCoffee={handleInspectFromCurator}
+                onApplyFlavorPortrait={handleApplyFlavorPortrait}
                 onRebrew={handleStartBrew}
                 onGoCurator={() => handleNavigate('curator')}
               />
@@ -346,6 +468,14 @@ export default function App() {
           </Suspense>
         </ErrorBoundary>
       </main>
+
+      <QuickFinder
+        open={quickFinderOpen}
+        onClose={() => setQuickFinderOpen(false)}
+        onNavigateView={handleNavigate}
+        onInspectCoffee={handleInspectFromCurator}
+        onStartBrew={(c) => handleStartBrew(c, 1, 'standard')}
+      />
 
       <footer className="museum-footer">
         <div className="museum-footer-inner">

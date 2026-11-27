@@ -15,6 +15,7 @@ import {
 } from '../src/data/coffees.ts'
 import { EXHIBIT_EXTRAS, getDailyFeaturedIndex } from '../src/data/exhibitExtras.ts'
 import type { SavedBrewRecord } from '../src/types/coffee.ts'
+import { sanitizeImportedRecord } from '../src/utils/archive.ts'
 import {
   computeCuratorBadges,
   formatRecipeShareText,
@@ -24,6 +25,8 @@ import {
   scoreExhibitMatch,
   setSoundMuted,
 } from '../src/utils/platform.ts'
+import { buildMuseumHash, parseMuseumHash } from '../src/utils/router.ts'
+import { searchMuseumCatalog } from '../src/utils/search.ts'
 
 describe('Coffee Museum Catalog & Data Integrity', () => {
   it('has 32 unique exhibits with valid steps, moods, and editorial extras', () => {
@@ -222,5 +225,105 @@ describe('Brewing & Matching Algorithms', () => {
     assert.equal(isSoundMuted(), true)
     setSoundMuted(false)
     assert.equal(isSoundMuted(), false)
+  })
+})
+
+describe('Hash Routing, Quick Search & Archive Sanitization', () => {
+  it('parses and builds museum deep-link hashes reliably', () => {
+    assert.deepEqual(parseMuseumHash('', COFFEE_EXHIBITS), { view: 'curator' })
+    assert.deepEqual(parseMuseumHash('#gallery', COFFEE_EXHIBITS), { view: 'gallery' })
+    assert.deepEqual(parseMuseumHash('#exhibit/panama-geisha', COFFEE_EXHIBITS), {
+      view: 'gallery',
+      exhibitId: 'panama-geisha',
+    })
+    assert.deepEqual(parseMuseumHash('#exhibit/non-existent-id', COFFEE_EXHIBITS), {
+      view: 'gallery',
+    })
+    assert.deepEqual(parseMuseumHash('#studio/yirgacheffe-v60', COFFEE_EXHIBITS), {
+      view: 'studio',
+      brewCoffeeId: 'yirgacheffe-v60',
+    })
+    assert.deepEqual(parseMuseumHash('#atlas/wheel', COFFEE_EXHIBITS), {
+      view: 'atlas',
+      atlasSection: 'wheel',
+    })
+    assert.deepEqual(parseMuseumHash('#atlas/unknown-tab', COFFEE_EXHIBITS), {
+      view: 'atlas',
+      atlasSection: 'map',
+    })
+    assert.deepEqual(parseMuseumHash('#unknown-route', COFFEE_EXHIBITS), { view: 'curator' })
+
+    assert.equal(
+      buildMuseumHash({ view: 'gallery', exhibitId: 'panama-geisha' }),
+      '#exhibit/panama-geisha'
+    )
+    assert.equal(
+      buildMuseumHash({ view: 'studio', brewCoffeeId: 'yirgacheffe-v60' }),
+      '#studio/yirgacheffe-v60'
+    )
+    assert.equal(
+      buildMuseumHash({ view: 'atlas', atlasSection: 'troubleshoot' }),
+      '#atlas/troubleshoot'
+    )
+    assert.equal(buildMuseumHash({ view: 'atlas', atlasSection: 'map' }), '#atlas')
+  })
+
+  it('searches exhibits and shortcuts accurately across Chinese, English, and exhibit numbers', () => {
+    const empty = searchMuseumCatalog('', COFFEE_EXHIBITS)
+    assert.equal(empty.exhibits.length, 6)
+    assert.ok(empty.shortcuts.length >= 8)
+
+    const byNo = searchMuseumCatalog('EXH-01', COFFEE_EXHIBITS)
+    assert.equal(byNo.exhibits[0]?.exhibitNo, 'EXH-01')
+
+    const byChinese = searchMuseumCatalog('艺伎', COFFEE_EXHIBITS)
+    assert.ok(byChinese.exhibits.some((c) => c.id === 'panama-geisha'))
+
+    const byEnglish = searchMuseumCatalog('Geisha', COFFEE_EXHIBITS)
+    assert.ok(byEnglish.exhibits.some((c) => c.id === 'panama-geisha'))
+
+    const byTool = searchMuseumCatalog('风味轮', COFFEE_EXHIBITS)
+    assert.ok(byTool.shortcuts.some((s) => s.atlasSection === 'wheel'))
+
+    const noMatch = searchMuseumCatalog('不存在的咖啡名称xyz', COFFEE_EXHIBITS)
+    assert.equal(noMatch.exhibits.length, 0)
+    assert.equal(noMatch.shortcuts.length, 0)
+  })
+
+  it('sanitizes corrupt or out-of-range imported archive records safely', () => {
+    assert.equal(sanitizeImportedRecord(null, COFFEE_EXHIBITS), null)
+    assert.equal(sanitizeImportedRecord({ recordId: '   ', coffeeId: 'yirgacheffe-v60' }, COFFEE_EXHIBITS), null)
+
+    const sanitized = sanitizeImportedRecord(
+      {
+        recordId: 'imp-1',
+        coffeeId: 'yirgacheffe-v60',
+        rating: 99,
+        servings: -3,
+        doseGrams: -10,
+        waterTempC: 999,
+        brewedAt: 'not-a-date',
+        tastePreset: 'invalid-preset',
+        flavorProfile: {
+          acidity: 140,
+          sweetness: -20,
+          body: Number.NaN,
+          bitterness: 42.6,
+          aroma: 88,
+        },
+      },
+      COFFEE_EXHIBITS
+    )
+
+    assert.ok(sanitized)
+    assert.equal(sanitized.rating, 5)
+    assert.equal(sanitized.servings, 1)
+    assert.equal(sanitized.doseGrams, 15)
+    assert.equal(sanitized.waterTempC, 100)
+    assert.equal(sanitized.tastePreset, undefined)
+    assert.equal(sanitized.flavorProfile.acidity, 100)
+    assert.equal(sanitized.flavorProfile.sweetness, 0)
+    assert.equal(sanitized.flavorProfile.bitterness, 43)
+    assert.ok(!Number.isNaN(Date.parse(sanitized.brewedAt)))
   })
 })
